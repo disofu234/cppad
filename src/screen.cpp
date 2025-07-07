@@ -42,8 +42,8 @@ CSCREEN::CSCREEN(std::ifstream& file, int max_rows, int max_cols) :
 PrintOperation CSCREEN::handle_append(int ch)
 {
 	SCREEN_CHANGE change("handle_append", this);
-	AppendCase acase = content_state.handle_append(ch);
-	if (acase == NewLine)
+	content_state.handle_append(ch);
+	if (ch == '\n')
 	{
 		CLINES_CIT line = content_state.get_line_it();
 		backspace(line_ind, line->size(), change);
@@ -70,7 +70,7 @@ PrintOperation CSCREEN::handle_append(int ch)
 		return AfterCursor;
 	}
 
-	int chars_added = acase == AppendTab ? 4 : 1;
+	int chars_added = ch == '\t' ? 4 : 1;
 	append(line_ind, chars_added, change);
 	x += chars_added;
 	if (x > max_cols)
@@ -90,19 +90,19 @@ PrintOperation CSCREEN::handle_append(int ch)
 		(content_state.is_cursor_at_line_end() && change.rows_change));
 	return after_cursor ?
 		AfterCursor :
-		(acase == AppendTab ? Tab : None);
+		(ch == '\t' ? Tab : None);
 }
 
 PrintOperation CSCREEN::handle_backspace()
 {
 	SCREEN_CHANGE change("handle_backspace", this);
-	BackspaceCase bcase = content_state.handle_backspace();
-	if (bcase == NoContent)
+	char ch = content_state.handle_backspace();
+	if (ch == '\0')
 	{
 		return None;
 	}
 
-	if (bcase == LineStart)
+	if (ch == '\n')
 	{
 		if (y == 0)
 		{
@@ -115,7 +115,7 @@ PrintOperation CSCREEN::handle_backspace()
 		merge_with_next_line(line_ind - 1, change);
 	}
 
-	int num_chars = bcase == BackspaceTab ? 4 : 1;
+	int num_chars = ch == '\t' ? 4 : 1;
 	backspace(line_ind, num_chars, change);
 	x -= num_chars;
 	if (x < 0)

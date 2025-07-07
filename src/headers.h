@@ -83,7 +83,7 @@ public:
 	void left(int n);
 	void right(int n);
 
-	std::string get_contents_string();
+	std::string get_string();
 
 	void log_state();
 private:
@@ -95,24 +95,26 @@ private:
 	CHARS_IT x_it;
 
 	int remove_tab(CLINES_CIT y_it, int x);
-	void get_tab_spaces(CLINES_CIT y_it, int x);
+	int get_tab_spaces(CLINES_CIT y_it, int x);
 	void change_tab_spaces(CLINES_CIT y_it, int x, int change);
 
 	bool is_tab_start(CLINES_CIT y_it, int x);
 	bool is_tab_end(CLINES_CIT y_it, int x);
 	bool is_tab_stopped(CLINES_CIT y_it, int tab_stop);
 
-	void handle_append(int ch, CLINES_CIT y_it, CHARS_CIT x_it, int* x);
-	void handle_append_line(CLINES_CIT y_it, CHARS_CIT x_it, int* x);
-	void handle_append_tab(CLINES_CIT y_it, CHARS_CIT x_it, int* x);
-	void handle_append_normal(char ch, CLINES_CIT y_it, CHARS_CIT x_it, int* x);
+	void handle_append(char ch, CLINES_IT* y_it_ptr, CHARS_IT* x_it_ptr, int* x);
+	void handle_append_line(CLINES_IT* y_it_ptr, CHARS_IT* x_it_ptr, int* x);
+	void handle_append_tab(CLINES_IT* y_it_ptr, CHARS_IT* x_it_ptr, int* x);
+	void handle_append_normal(char ch, CLINES_IT* y_it_ptr, CHARS_IT* x_it_ptr, int* x);
 
 	void handle_backspace_line();
 	void handle_backspace_tab();
 	char handle_backspace_normal();
 
-	bool is_tab_stop();
+	bool is_tab_stop(int x);
 	int tab_stop(int x);
+
+	std::string get_line_string(CLINES_CIT y_it, CHARS_CIT x_it, int x);
 
 	std::string char_it_str(CHARS_CIT x_it, CLINES_CIT y_it);
 };

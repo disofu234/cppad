@@ -10,7 +10,6 @@ TEST(ContentRight, Normal)
 	EXPECT_EQ(content_state.get_line_it(), initial_y_it);
 	EXPECT_EQ(content_state.get_string(), "abc");
 	EXPECT_EQ(content_state.get_x(), 1);
-	EXPECT_EQ(content_state.get_y(), 0);
 }
 
 TEST(ContentRight, End)
@@ -22,7 +21,6 @@ TEST(ContentRight, End)
 	EXPECT_EQ(content_state.get_line_it(), std::next(initial_y_it));
 	EXPECT_EQ(content_state.get_string(), "a\nbc");
 	EXPECT_EQ(content_state.get_x(), 0);
-	EXPECT_EQ(content_state.get_y(), 1);
 }
 
 TEST(ContentRight, Tab)
@@ -34,7 +32,6 @@ TEST(ContentRight, Tab)
 	EXPECT_EQ(content_state.get_line_it(), initial_y_it);
 	EXPECT_EQ(content_state.get_string(), "a\tbc");
 	EXPECT_EQ(content_state.get_x(), 5);
-	EXPECT_EQ(content_state.get_y(), 0);
 }
 
 TEST(ContentLeft, Normal)
@@ -47,7 +44,6 @@ TEST(ContentLeft, Normal)
 	EXPECT_EQ(content_state.get_line_it(), initial_y_it);
 	EXPECT_EQ(content_state.get_string(), "abc");
 	EXPECT_EQ(content_state.get_x(), 0);
-	EXPECT_EQ(content_state.get_y(), 0);
 }
 
 TEST(ContentLeft, Beginning)
@@ -60,7 +56,6 @@ TEST(ContentLeft, Beginning)
 	EXPECT_EQ(content_state.get_line_it(), initial_y_it);
 	EXPECT_EQ(content_state.get_string(), "a\nbc");
 	EXPECT_EQ(content_state.get_x(), 1);
-	EXPECT_EQ(content_state.get_y(), 0);
 }
 
 TEST(ContentLeft, Tab)
@@ -73,20 +68,17 @@ TEST(ContentLeft, Tab)
 	EXPECT_EQ(content_state.get_line_it(), initial_y_it);
 	EXPECT_EQ(content_state.get_string(), "a\tbc");
 	EXPECT_EQ(content_state.get_x(), 0);
-	EXPECT_EQ(content_state.get_y(), 0);
 }
 
 TEST(ContentAppendChar, MidLine)
 {
 	CONTENT content_state = initialize_content_state("abc");
 	CLINES_CIT initial_y_it = content_state.get_line_it();
-	AppendCase acase = content_state.handle_append('d');
-	EXPECT_EQ(acase, AppendNormal);
+	content_state.handle_append('d');
 	EXPECT_EQ(*std::prev(content_state.get_char_it()), 'd');
 	EXPECT_EQ(content_state.get_line_it(), initial_y_it);
 	EXPECT_EQ(content_state.get_string(), "dabc");
 	EXPECT_EQ(content_state.get_x(), 1);
-	EXPECT_EQ(content_state.get_y(), 0);
 }
 
 TEST(ContentAppendChar, EndOfLine)
@@ -94,13 +86,11 @@ TEST(ContentAppendChar, EndOfLine)
 	CONTENT content_state = initialize_content_state("abc");
 	content_state.right(3);
 	CLINES_CIT initial_y_it = content_state.get_line_it();
-	AppendCase acase = content_state.handle_append('d');
-	EXPECT_EQ(acase, AppendNormal);
+	content_state.handle_append('d');
 	EXPECT_EQ(*std::prev(content_state.get_char_it()), 'd');
 	EXPECT_EQ(content_state.get_line_it(), initial_y_it);
 	EXPECT_EQ(content_state.get_string(), "abcd");
 	EXPECT_EQ(content_state.get_x(), 4);
-	EXPECT_EQ(content_state.get_y(), 0);
 }
 
 TEST(ContentAppendChar, NewLineEnd)
@@ -108,14 +98,12 @@ TEST(ContentAppendChar, NewLineEnd)
 	CONTENT content_state = initialize_content_state("abc");
 	content_state.right(3);
 	CLINES_CIT initial_y_it = content_state.get_line_it();
-	AppendCase acase = content_state.handle_append('\n');
-	EXPECT_EQ(acase, NewLine);
+	content_state.handle_append('\n');
 	CLINES_CIT next_y_it = std::next(initial_y_it);
 	EXPECT_EQ(content_state.get_char_it(), next_y_it->begin());
 	EXPECT_EQ(content_state.get_line_it(), next_y_it);
 	EXPECT_EQ(content_state.get_string(), "abc\n");
 	EXPECT_EQ(content_state.get_x(), 0);
-	EXPECT_EQ(content_state.get_y(), 1);
 }
 
 TEST(ContentAppendChar, NewLineMidLine)
@@ -123,14 +111,12 @@ TEST(ContentAppendChar, NewLineMidLine)
 	CONTENT content_state = initialize_content_state("abc");
 	content_state.right(1);
 	CLINES_CIT initial_y_it = content_state.get_line_it();
-	AppendCase acase = content_state.handle_append('\n');
-	EXPECT_EQ(acase, NewLine);
+	content_state.handle_append('\n');
 	CLINES_CIT next_y_it = std::next(initial_y_it);
 	EXPECT_EQ(*(content_state.get_char_it()), 'b');
 	EXPECT_EQ(content_state.get_line_it(), next_y_it);
 	EXPECT_EQ(content_state.get_string(), "a\nbc");
 	EXPECT_EQ(content_state.get_x(), 0);
-	EXPECT_EQ(content_state.get_y(), 1);
 }
 
 TEST(ContentAppendChar, Tab)
@@ -138,13 +124,11 @@ TEST(ContentAppendChar, Tab)
 	CONTENT content_state = initialize_content_state("ab\tc");
 	content_state.right(1);
 	CLINES_CIT initial_y_it = content_state.get_line_it();
-	AppendCase acase = content_state.handle_append('\t');
-	EXPECT_EQ(acase, AppendTab);
+	content_state.handle_append('\t');
 	EXPECT_EQ(*(content_state.get_char_it()), 'b');
 	EXPECT_EQ(content_state.get_line_it(), initial_y_it);
 	EXPECT_EQ(content_state.get_string(), "a\tb\tc");
 	EXPECT_EQ(content_state.get_x(), 5);
-	EXPECT_EQ(content_state.get_y(), 0);
 }
 
 TEST(ContentBackspace, MidLine)
@@ -152,26 +136,24 @@ TEST(ContentBackspace, MidLine)
 	CONTENT content_state = initialize_content_state("abc");
 	content_state.right(1);
 	CLINES_CIT initial_y_it = content_state.get_line_it();
-	BackspaceCase bcase = content_state.handle_backspace();
-	EXPECT_EQ(bcase, BackspaceNormal);
+	char ch = content_state.handle_backspace();
+	EXPECT_EQ(ch, 'a');
 	EXPECT_EQ(*(content_state.get_char_it()), 'b');
 	EXPECT_EQ(content_state.get_line_it(), initial_y_it);
 	EXPECT_EQ(content_state.get_string(), "bc");
 	EXPECT_EQ(content_state.get_x(), 0);
-	EXPECT_EQ(content_state.get_y(), 0);
 }
 
 TEST(ContentBackspace, NoContent)
 {
 	CONTENT content_state = initialize_content_state("abc");
 	CLINES_CIT initial_y_it = content_state.get_line_it();
-	BackspaceCase bcase = content_state.handle_backspace();
-	EXPECT_EQ(bcase, NoContent);
+	char ch = content_state.handle_backspace();
+	EXPECT_EQ(ch, '\0');
 	EXPECT_EQ(*(content_state.get_char_it()), 'a');
 	EXPECT_EQ(content_state.get_line_it(), initial_y_it);
 	EXPECT_EQ(content_state.get_string(), "abc");
 	EXPECT_EQ(content_state.get_x(), 0);
-	EXPECT_EQ(content_state.get_y(), 0);
 }
 
 TEST(ContentBackspace, LineStart)
@@ -180,13 +162,12 @@ TEST(ContentBackspace, LineStart)
 	content_state.right(3);
 	CLINES_CIT initial_y_it = content_state.get_line_it();
 	CLINES_CIT prev_y_it = std::prev(initial_y_it);
-	BackspaceCase bcase = content_state.handle_backspace();
-	EXPECT_EQ(bcase, LineStart);
+	char ch = content_state.handle_backspace();
+	EXPECT_EQ(ch, '\n');
 	EXPECT_EQ(*(content_state.get_char_it()), 'c');
 	EXPECT_EQ(content_state.get_line_it(), prev_y_it);
 	EXPECT_EQ(content_state.get_string(), "abc");
 	EXPECT_EQ(content_state.get_x(), 2);
-	EXPECT_EQ(content_state.get_y(), 0);
 }
 
 TEST(ContentBackspace, Tab)
@@ -194,11 +175,10 @@ TEST(ContentBackspace, Tab)
 	CONTENT content_state = initialize_content_state("ab\n\tc");
 	content_state.right(4);
 	CLINES_CIT initial_y_it = content_state.get_line_it();
-	BackspaceCase bcase = content_state.handle_backspace();
-	EXPECT_EQ(bcase, BackspaceTab);
+	char ch = content_state.handle_backspace();
+	EXPECT_EQ(ch, '\t');
 	EXPECT_EQ(*(content_state.get_char_it()), 'c');
 	EXPECT_EQ(content_state.get_line_it(), initial_y_it);
 	EXPECT_EQ(content_state.get_string(), "ab\nc");
 	EXPECT_EQ(content_state.get_x(), 0);
-	EXPECT_EQ(content_state.get_y(), 1);
 }

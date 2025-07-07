@@ -4,8 +4,7 @@ CONTENT::CONTENT(std::ifstream& file) :
 	contents({{}}),
 	y_it(contents.begin()),
 	x_it(y_it->begin()),
-	x(0),
-	y(0)
+	x(0)
 {
 	char ch;
 	while (file.get(ch))
@@ -16,7 +15,6 @@ CONTENT::CONTENT(std::ifstream& file) :
 	y_it = contents.begin();
 	x_it = y_it->begin();
 	x = 0;
-	y = 0;
 }
 
 void CONTENT::log_state()
@@ -55,11 +53,6 @@ int CONTENT::get_x()
 	return x;
 }
 
-int CONTENT::get_y()
-{
-	return y;
-}
-
 CLINES_CIT CONTENT::get_first_line_it()
 {
 	return contents.begin();
@@ -92,13 +85,13 @@ bool CONTENT::is_cursor_at_line_end()
 
 void CONTENT::handle_append(int ch)
 {
-	handle_append(ch, y_it, x_it, &x);
+	handle_append(ch, &y_it, &x_it, &x);
 }
 
 void CONTENT::handle_append(
 	char ch,
-	CLINES_CIT y_it,
-	CHARS_CIT x_it,
+	CLINES_IT* y_it,
+	CHARS_IT* x_it,
 	int* x)
 {
 	switch (ch)
@@ -115,13 +108,16 @@ void CONTENT::handle_append(
 	}
 }
 
-void CONTENT::handle_append_line(CLINES_CIT y_it, CHARS_CIT x_it, int* x)
+void CONTENT::handle_append_line(CLINES_IT* y_it_ptr, CHARS_IT* x_it_ptr, int* x)
 {
-	CLINES_CIT new_y_it = contents.insert(std::next(y_it), CHARS());
+	CLINES_IT y_it = *y_it_ptr;
+	CHARS_IT x_it = *x_it_ptr;
+
+	CLINES_IT new_y_it = contents.insert(std::next(y_it), CHARS());
 	CHARS_CIT x_it_start = x_it;
 
 	int new_line_x = 0;
-	std::string new_line_string = get_line_string(y_it, x_it, x);
+	std::string new_line_string = get_line_string(y_it, x_it, *x);
 	for (char ch : new_line_string)
 	{
 		int offset = 1;
@@ -130,21 +126,24 @@ void CONTENT::handle_append_line(CLINES_CIT y_it, CHARS_CIT x_it, int* x)
 			remove_tab(y_it, *x);
 			offset = 4;
 		}
-		handle_append(ch, new_y_it, new_y_it->end(), &new_line_x);
-		x_it += offset;
+		CHARS_IT new_y_it_end = new_y_it->end();
+		handle_append(ch, &new_y_it, &new_y_it_end, &new_line_x);
+		x_it = std::next(x_it, offset);
 		x += offset;
 	}
 
 	y_it->erase(x_it_start, y_it->end());
 
-	y_it = new_y_it;
-	x_it = new_y_it->begin();
-	y++;
+	*y_it_ptr = new_y_it;
+	*x_it_ptr = new_y_it->begin();
 	*x = 0;
 }
 
-void CONTENT::handle_append_tab(CLINES_CIT y_it, CHARS_CIT x_it, int* x)
+void CONTENT::handle_append_tab(CLINES_IT* y_it_ptr, CHARS_IT* x_it_ptr, int* x)
 {
+	CLINES_IT y_it = *y_it_ptr;
+	CHARS_IT x_it = *x_it_ptr;
+
 	if (is_tab_stopped(y_it, tab_stop(*x)))
 	{
 		int spaces = get_tab_spaces(y_it, *x);
@@ -160,21 +159,24 @@ void CONTENT::handle_append_tab(CLINES_CIT y_it, CHARS_CIT x_it, int* x)
 		*x += 1;
 	}
 
-	CHARS* y_it_ptr = &(*y_it);
-	if (tabs.find(y_it_ptr) == tabs.end())
+	CHARS* chars_ptr = &(*y_it);
+	if (tabs.find(chars_ptr) == tabs.end())
 	{
-		tabs.insert({y_it_ptr, LINE_TABS()});
+		tabs.insert({chars_ptr, LINE_TABS()});
 	}
-	LINE_TABS& line_tabs = tabs[y_it_ptr];
+	LINE_TABS& line_tabs = tabs[chars_ptr];
 	line_tabs[tab_stop(*x)] = whitespace;
 }
 
 void CONTENT::handle_append_normal(
 	char ch,
-	CLINES_CIT y_it,
-	CHARS_CIT x_it,
+	CLINES_IT* y_it_ptr,
+	CHARS_IT* x_it_ptr,
 	int* x)
 {
+	CLINES_IT y_it = *y_it_ptr;
+	CHARS_IT x_it = *x_it_ptr;
+
 	if (is_tab_stopped(y_it, tab_stop(*x)))
 	{
 		change_tab_spaces(y_it, *x, 1);
@@ -187,7 +189,7 @@ void CONTENT::handle_append_normal(
 void CONTENT::change_tab_spaces(CLINES_CIT y_it, int x, int change)
 {
 	int stop = tab_stop(x);
-	CHARS* y_it_ptr = &(*y_it);
+	CHARS* y_it_ptr = (CHARS*)&(*y_it);
 	LINE_TABS& line_tabs = tabs[y_it_ptr];
 	line_tabs[stop] += change;
 	int spaces = line_tabs[stop];
@@ -233,7 +235,8 @@ void CONTENT::handle_backspace_line()
 	x_it = --prev_y_it->end();
 	for (char ch : line_string)
 	{
-		handle_append(ch, prev_y_it, prev_y_it->end(), &prev_x);
+		CHARS_IT prev_y_it_end = prev_y_it->end();
+		handle_append(ch, &prev_y_it, &prev_y_it_end, &prev_x);
 	}
 
 	contents.erase(y_it);
@@ -248,7 +251,7 @@ void CONTENT::handle_backspace_tab()
 {
 	int spaces = remove_tab(y_it, x - 1);
 	x_it = std::prev(x_it, spaces);
-	y_it->erase(x_it, x_it + spaces);
+	y_it->erase(x_it, std::next(x_it, spaces));
 	x -= spaces;
 }
 
@@ -268,7 +271,8 @@ char CONTENT::handle_backspace_normal()
 int CONTENT::remove_tab(CLINES_CIT y_it, int x)
 {
 	int spaces = get_tab_spaces(y_it, x);
-	tabs[&(*y_it)].erase(tab_stop(x));
+	CHARS* chars_ptr = (CHARS*)&(*y_it);
+	tabs[chars_ptr].erase(tab_stop(x));
 	return spaces;
 }
 
@@ -279,7 +283,8 @@ int CONTENT::get_tab_spaces(CLINES_CIT y_it, int x)
 		throw std::runtime_error("get_tab_spaces: tab stop not found");
 	}
 
-	return tabs[&(*y_it)][tab_stop(x)];
+	CHARS* chars_ptr = (CHARS*)&(*y_it);
+	return tabs[chars_ptr][tab_stop(x)];
 }
 
 bool CONTENT::is_tab_start(CLINES_CIT y_it, int x)
@@ -300,7 +305,7 @@ bool CONTENT::is_tab_end(CLINES_CIT y_it, int x)
 
 bool CONTENT::is_tab_stopped(CLINES_CIT y_it, int stop)
 {
-	CHARS* y_it_ptr = &(*y_it);
+	CHARS* y_it_ptr = (CHARS*)&(*y_it);
 	if (tabs.find(y_it_ptr) == tabs.end())
 	{
 		return false;
@@ -319,7 +324,7 @@ std::string CONTENT::get_line_string(CLINES_CIT y_it, CHARS_CIT x_it, int x)
 		char ch = is_tab ? '\t' : *x_it;
 		int offset = is_tab ? 4 : 1;
 		ss << ch;
-		x_it += offset;
+		x_it = std::next(x_it, offset);
 		x += offset;
 	}
 	return ss.str();
@@ -331,6 +336,10 @@ std::string CONTENT::get_string()
 	for (CLINES_CIT y_it = contents.begin(); y_it != contents.end(); y_it++)
 	{
 		ss << get_line_string(y_it, y_it->begin(), 0);
+		if (y_it != get_last_line_it())
+		{
+			ss << '\n';
+		}
 	}
 	return ss.str();
 }
@@ -352,7 +361,7 @@ LeftRightCase CONTENT::handle_left()
 	if (is_tab_end(y_it, x))
 	{
 		int spaces = get_tab_spaces(y_it, x - 1);
-		x_it -= spaces;
+		x_it = std::prev(x_it, spaces);
 		x -= spaces;
 		return LeftRightTab;
 	}
@@ -374,13 +383,13 @@ LeftRightCase CONTENT::handle_right()
 		y_it++;
 		x_it = y_it->begin();
 		x = 0;
-		return LeftRightLineEnd;
+		return LeftRightNormal;
 	}
 
 	if (is_tab_start(y_it, x))
 	{
 		int spaces = get_tab_spaces(y_it, x);
-		x_it += spaces;
+		x_it = std::next(x_it, spaces);
 		x += spaces;
 		return LeftRightTab;
 	}
@@ -414,9 +423,9 @@ void CONTENT::down()
 {
 }
 
-bool CONTENT::is_tab_stop(int x_pos)
+bool CONTENT::is_tab_stop(int x)
 {
-	return x_pos > 0 && x_pos % TAB_SIZE == 0;
+	return x > 0 && x % TAB_SIZE == 0;
 }
 
 int CONTENT::tab_stop(int i)
