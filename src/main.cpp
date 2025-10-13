@@ -1,5 +1,7 @@
 #include <ncurses.h>
-#include "headers.h"
+#include <fstream>
+#include "cursor.h"
+#include "screen.h"
 
 class CPPAD
 {
@@ -37,7 +39,6 @@ private:
 
 	void handle_append(int ch)
 	{
-		std::cerr << "handle_append(" << char(ch) << ")\n";
 		PrintOperation op = screen.handle_append(ch);
 		if (op == Tab)
 		{

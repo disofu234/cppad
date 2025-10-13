@@ -1,2 +1,7 @@
 /build/
+/build-docker
 .hello.cpp.swp
+/.devcontainer/
+/.vscode/
+/.claude/
+/.devcontainer/

@@ -6,7 +6,7 @@ To run the project first make sure [Docker](https://www.docker.com/) is installe
 
 ```
 docker build -t cppad .
-docker run -it --rm cppad bash
+docker run --rm -it -v "${PWD}:/app" -w /app cppad
 ```
 
 Once the shell is running you can run CPPAD:
@@ -20,28 +20,24 @@ The program expects a single argument `filename`, which is either the name of th
 
 # Design
 
-The core modules of the CPPAD editor are the `CSCREEN` and `CONTENT` classes. The `CONTENT` class handles storing the text that is being edited and modifying it according to the edit events that are kicked off by the user's keystrokes. The `CSCREEN` class handles transforming the text that is being edited to the text that is shown on the screen. Handling user input and loading/saving the file is handled in the `CPPAD` class, which acts as a wrapper for the whole program.
+The text data structure is `CONTENT`, which is a list of `LINE`s. A `LINE` consists of a list of characters and a data structure `TABS` to track the tabs in each line. A `SCREEN` object is initialized with the `CONTENT` object and the dimensions of the screen and it exposes the string to be printed on the screen. `NCurses` is used to actually print the string on the terminal.
+
+A `CURSOR` is initialized with the `SCREEN` and `CONTENT` object and it acts as interlocutor between two objects within it: `CONTENT_CURSOR` and `SCREEN_CURSOR`. The `SCREEN_CURSOR` tracks the position of the cursor on the screen. The `CONTENT_CURSOR` tracks the position of the cursor in the `CONTENT` object. The `CURSOR` exposes methods to move the cursor and edit the text, which it translates into calls to the `CONTENT_CURSOR` and `SCREEN_CURSOR`. The `CURSOR` object is initialized to be at the top-left corner of the screen.
 
 ## `CONTENT`
 
-The `CONTENT` class stores the text that is being edited and handles modifications of that text. Text lends itself naturally to a contiguous data structure, so the choice is between a linked-list and an array. Since we have to support moving the cursor backward and forward as well as editing at any cursor position, a doubly linked-list makes the most sense. Using an array would mean that each edit could be O(# of chars) in the worst case. We use the standard library `std::list` implementation of a doubly linked-list.
+The `CONTENT` object stores the text that is being edited and handles modifications of that text. Text lends itself naturally to a contiguous data structure, so the choice is between a linked-list and an array. Since we have to support moving the cursor backward and forward as well as editing at any cursor position, a doubly linked-list makes the most sense. Using an array would mean that each edit could be O(# of chars) in the worst case. We use the standard library `std::list` implementation of a doubly linked-list.
 
-It also makes sense to have a separate linked-list for each line of the text, and for each of these linked-lists to be stored in a doubly linked-list to allow fast movement of the cursor across lines. Then, the text being edited is stored in an object of type `std::list<std::list<char>>`.
+It also makes sense to have a separate linked-list for each line of the text, and for each of these linked-lists to be stored in a doubly linked-list to allow fast movement of the cursor across lines. Thus, the text being edited is stored in an object of type `std::list<LINE>`.
+
+The `LINE` object stores a single line of text. It consists of a `std::list<char>` to store the characters in the line, and a `TABS` object to track the tabs in the line.
 
 ### Tabs
 
-A tab character advances the cursor to the next tab stop. We will define the tab stops in our program to be at multiples of 8 spaces on each line.
+Tracking tabs in text calls for a specialized data structure because of the way tab characters work. A tab doesn't always correspond to a fixed number of spaces, but rather advances the cursor to the next tab stop. Thus, the number of spaces a tab corresponds to depends on where it is in the line. For example, if the tab stops are at multiples of 8 spaces, then a tab at position 0 corresponds to 8 spaces, while a tab at position 5 corresponds to 3 spaces.
 
-For alignment it helps to know the number of spaces in each line, so, when we handle a tab append, it makes sense to add the necessary whitespaces individually. To stay faithful to the characters that the user inputs, however, we also mark the place where the tab was added in a separate data structure, so that when the user saves the file the `\t` character is saved instead of the individual whitespaces. Keeping track of where tabs are also helps determine how many spaces to move when moving the cursor with the arrow keys.
+`TABS` is the data structure we use to track tabs in a line. It is a list where each element corresponds to a tab, except for the last element which corresponds to the characters after the last tab. Each element keeps track of how many characters are between it and the previous tab, and how many spaces the tab takes up. The number of characters between it and previous tab needs to tracked since the number of spaces will be: `tab_width - (chars_after_prev_tab % tab_width)`.
 
-Our tab data structure should support the following operations:
-
-- Insert/delete a tab in a line.
-- Determine if a position is the start/end of a tab.
-- Merge the tabs of two lines.
-- Split the tabs of a line into two at an arbitrary position.
-
-To implement this data structure we have an array `vector<int> tabs`, where `tabs[i]` encodes whether the `i` tab stop has been tabbed, and if so how many trailing whitespaces it includes. Concretely, if the `i` tab stop has not been tabbed then `tabs[i] = 0`. Otherwise, `tabs[i] = # of trailing whitespaces`.
+To quickly modify the `TABS` object when a character is inserted or deleted, `CURSOR` keeps track of the position of the cursor in the `TABS` object as well. This allows for O(1) insertion and deletion of tabs and other characters.
 
 ## `CSCREEN`
-

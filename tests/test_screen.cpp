@@ -1,197 +1,132 @@
 #include <gtest/gtest.h>
-#include "test_helpers.h"
+#include "screen.h"
 
-TEST(ScreenAppend, Normal)
+class ScreenTest : public ::testing::Test
 {
-	CSCREEN screen = initialize_screen("", MAX_ROWS, MAX_COLS);
-	PrintOperation op = screen.handle_append('a');
-	EXPECT_EQ(op, None);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "a");
-	EXPECT_EQ(screen.get_x(), 1);
-	EXPECT_EQ(screen.get_y(), 0);
+protected:
+	CONTENT content;
+};
+
+TEST_F(ScreenTest, Constructor)
+{
+	std::istringstream input("abc\ndefg\nhijkl");
+	initialize_content(content, input);
+	CSCREEN screen(content, 3, 4);
+	EXPECT_EQ(screen.print(), "abc\ndefg\nhijk");
 }
 
-TEST(ScreenAppend, NormalRow)
+TEST_F(ScreenTest, MoveFirstNextAndPrevRow)
 {
-	CSCREEN screen = initialize_screen("abcdefgh", MAX_ROWS, MAX_COLS);
-	screen.right(2);
-	PrintOperation op = screen.handle_append('e');
-	EXPECT_EQ(op, AfterCursor);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_cursor()), "cdefg");
-	EXPECT_EQ(screen.get_x(), 3);
-	EXPECT_EQ(screen.get_y(), 0);
+	std::istringstream input("abcde");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 4);
+
+	screen.first.next_row();
+	EXPECT_EQ(screen.print(), "e");
+
+	screen.first.prev_row();
+	EXPECT_EQ(screen.print(), "abcde");
 }
 
-TEST(ScreenAppend, NormalEnd)
+TEST_F(ScreenTest, MoveFirstNextAndPrevRowLine)
 {
-	CSCREEN screen = initialize_screen("abcd\nefgh", MAX_ROWS, MAX_COLS);
-	screen.right(9);
-	PrintOperation op = screen.handle_append('e');
-	EXPECT_EQ(op, Screen);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "efghe");
-	EXPECT_EQ(screen.get_x(), 1);
-	EXPECT_EQ(screen.get_y(), 1);
+	std::istringstream input("abc\nd\n");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 4);
+
+	screen.first.next_row();
+	EXPECT_EQ(screen.print(), "d\n");
+
+	screen.first.prev_row();
+	EXPECT_EQ(screen.print(), "abc\nd");
 }
 
-TEST(ScreenAppend, Tab)
+TEST_F(ScreenTest, MoveFirstNextAndPrevRowEmpty)
 {
-	CSCREEN screen = initialize_screen("", MAX_ROWS, MAX_COLS);
-	PrintOperation op = screen.handle_append('\t');
-	EXPECT_EQ(op, None);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "    ");
-	EXPECT_EQ(screen.get_x(), 4);
-	EXPECT_EQ(screen.get_y(), 0);
+	std::istringstream input("abc");
+	initialize_content(content, input);
+	CSCREEN screen(content, 1, 4);
+
+	screen.first.next_row();
+	EXPECT_EQ(screen.print(), "");
+
+	screen.first.prev_row();
+	EXPECT_EQ(screen.print(), "abc");
 }
 
-TEST(ScreenAppend, TabRow)
+TEST_F(ScreenTest, MoveFirstNextAndPrevRowEmptyLine)
 {
-	CSCREEN screen = initialize_screen("abcdefgh", MAX_ROWS, MAX_COLS);
-	screen.right(2);
-	PrintOperation op = screen.handle_append('\t');
-	EXPECT_EQ(op, AfterCursor);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "ab    cd");
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_cursor()), "cd");
-	EXPECT_EQ(screen.get_x(), 2);
-	EXPECT_EQ(screen.get_y(), 1);
+	std::istringstream input("\nabc");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 4);
+
+	screen.first.next_row();
+	EXPECT_EQ(screen.print(), "abc");
+
+	screen.first.prev_row();
+	EXPECT_EQ(screen.print(), "\nabc");
 }
 
-TEST(ScreenAppend, TabEnd)
+TEST_F(ScreenTest, MoveFirstNextAndPrevChar)
 {
-	CSCREEN screen = initialize_screen("abcd\nefgh", MAX_ROWS, MAX_COLS);
-	screen.right(9);
-	PrintOperation op = screen.handle_append('\t');
-	EXPECT_EQ(op, Screen);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "efgh    ");
-	EXPECT_EQ(screen.get_x(), 4);
-	EXPECT_EQ(screen.get_y(), 1);
+	std::istringstream input("abcdef");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 3);
+
+	screen.first.next();
+	EXPECT_EQ(screen.print(), "bcdef");
+
+	screen.first.prev();
+	EXPECT_EQ(screen.print(), "abcdef");
 }
 
-TEST(ScreenAppend, Line)
+TEST_F(ScreenTest, MoveFirstNextAndPrevCharLine)
 {
-	CSCREEN screen = initialize_screen("abc", MAX_ROWS, MAX_COLS);
-	screen.right(3);
-	PrintOperation op = screen.handle_append('\n');
-	EXPECT_EQ(op, AfterCursor);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "abc\n");
-	EXPECT_EQ(screen.get_x(), 0);
-	EXPECT_EQ(screen.get_y(), 1);
+	std::istringstream input("\ndef");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 3);
+
+	screen.first.next();
+	EXPECT_EQ(screen.print(), "def");
+
+	screen.first.prev();
+	EXPECT_EQ(screen.print(), "\ndef");
 }
 
-TEST(ScreenAppend, LineMid)
+TEST_F(ScreenTest, MoveFirstNextAndPrevCharEmpty)
 {
-	CSCREEN screen = initialize_screen("abcdefgh", MAX_ROWS, MAX_COLS);
-	screen.right(3);
-	PrintOperation op = screen.handle_append('\n');
-	EXPECT_EQ(op, AfterCursor);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "abc\ndefg");
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_cursor()), "defg");
-	EXPECT_EQ(screen.get_x(), 0);
-	EXPECT_EQ(screen.get_y(), 1);
+	std::istringstream input("a");
+	initialize_content(content, input);
+	CSCREEN screen(content, 1, 3);
+
+	screen.first.next();
+	EXPECT_EQ(screen.print(), "");
+
+	screen.first.prev();
+	EXPECT_EQ(screen.print(), "a");
 }
 
-TEST(ScreenAppend, LineRow)
+TEST_F(ScreenTest, MoveFirstPrevAtStart)
 {
-	CSCREEN screen = initialize_screen("abcdefgh", MAX_ROWS, MAX_COLS);
-	screen.right(4);
-	PrintOperation op = screen.handle_append('\n');
-	EXPECT_EQ(op, RemoveWrap);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "abcd\nefgh");
-	EXPECT_EQ(screen.get_x(), 0);
-	EXPECT_EQ(screen.get_y(), 1);
+	std::istringstream input("abc");
+	initialize_content(content, input);
+	CSCREEN screen(content, 1, 3);
+	EXPECT_EQ(screen.print(), "abc");
+
+	screen.first.prev();
+	EXPECT_EQ(screen.print(), "abc");
+
+	screen.first.prev_row();
+	EXPECT_EQ(screen.print(), "abc");
 }
 
-TEST(ScreenAppend, LineEnd)
+TEST_F(ScreenTest, EmptyContent)
 {
-	CSCREEN screen = initialize_screen("abcd\nefgh", MAX_ROWS, MAX_COLS);
-	screen.right(6);
-	PrintOperation op = screen.handle_append('\n');
-	EXPECT_EQ(op, Screen);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "e\nfgh");
-	EXPECT_EQ(screen.get_x(), 0);
-	EXPECT_EQ(screen.get_y(), 1);
-}
+	std::istringstream input("");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 3);
+	EXPECT_EQ(screen.print(), "");
 
-TEST(ScreenBackspace, Normal)
-{
-	CSCREEN screen = initialize_screen("abc\nefgh\ndee", MAX_ROWS, MAX_COLS);
-	screen.right(1);
-	PrintOperation op = screen.handle_backspace();
-	EXPECT_EQ(op, AfterCursor);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "bc\nefgh");
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_cursor()), "bc\nefgh");
-	EXPECT_EQ(screen.get_x(), 0);
-	EXPECT_EQ(screen.get_y(), 0);
-}
-
-TEST(ScreenBackspace, NormalRow)
-{
-	CSCREEN screen = initialize_screen("abcde\ndee", MAX_ROWS, MAX_COLS);
-	screen.right(2);
-	PrintOperation op = screen.handle_backspace();
-	EXPECT_EQ(op, AfterCursor);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "acde\ndee");
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_cursor()), "cde\ndee");
-	EXPECT_EQ(screen.get_x(), 1);
-	EXPECT_EQ(screen.get_y(), 0);
-}
-
-TEST(ScreenBackspace, NormalEnd)
-{
-	CSCREEN screen = initialize_screen("abcd\n", MAX_ROWS, MAX_COLS);
-	screen.right(4);
-	PrintOperation op = screen.handle_backspace();
-	EXPECT_EQ(op, None);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "abc\n");
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_cursor()), "\n");
-	EXPECT_EQ(screen.get_x(), 3);
-	EXPECT_EQ(screen.get_y(), 0);
-}
-
-TEST(ScreenBackspace, Tab)
-{
-	CSCREEN screen = initialize_screen("\t", MAX_ROWS, MAX_COLS);
-	screen.right(1);
-	PrintOperation op = screen.handle_backspace();
-	EXPECT_EQ(op, None);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "");
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_cursor()), "");
-	EXPECT_EQ(screen.get_x(), 0);
-	EXPECT_EQ(screen.get_y(), 0);
-}
-
-TEST(ScreenBackspace, TabRow)
-{
-	CSCREEN screen = initialize_screen("ab\t", MAX_ROWS, MAX_COLS);
-	screen.right(3);
-	PrintOperation op = screen.handle_backspace();
-	EXPECT_EQ(op, AfterCursor);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "ab");
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_cursor()), "");
-	EXPECT_EQ(screen.get_x(), 2);
-	EXPECT_EQ(screen.get_y(), 0);
-}
-
-TEST(ScreenBackspace, LineStartAfterFirstRow)
-{
-	CSCREEN screen = initialize_screen("abc\nd", MAX_ROWS, MAX_COLS);
-	screen.right(4);
-	PrintOperation op = screen.handle_backspace();
-	EXPECT_EQ(op, AfterCursor);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "abcd");
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_cursor()), "d");
-	EXPECT_EQ(screen.get_x(), 3);
-	EXPECT_EQ(screen.get_y(), 0);
-}
-
-TEST(ScreenBackspace, LineStartAtFirstRow)
-{
-	CSCREEN screen = initialize_screen("abc\ndef\nghi", MAX_ROWS, MAX_COLS);
-	screen.right(8);
-	screen.left(4);
-	PrintOperation op = screen.handle_backspace();
-	EXPECT_EQ(op, Screen);
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_start()), "abcdef");
-	EXPECT_EQ(print_iterator(screen.get_iterator_at_cursor()), "def");
-	EXPECT_EQ(screen.get_x(), 3);
-	EXPECT_EQ(screen.get_y(), 0);
+	screen.first.next();
+	EXPECT_EQ(screen.print(), "");
 }

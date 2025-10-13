@@ -1,14 +1,22 @@
 #include "test_helpers.h"
 
-CONTENT initialize_content_state(std::string text)
+CONTENT initialize_content(std::string text)
 {
-	std::ofstream file("test");
-	file.clear();
-	file << text;
-	file.close();
+	CONTENT content{{}};
+	POSITION position(content, content.begin(), content.begin()->chars.begin(), 0);
+	CURSOR cursor(content, position);
+	for (char ch : text)
+	{
+		cursor.insert(ch);
+	}
+	return content;
+}
 
-	std::ifstream ifile("test");
-	return CONTENT(ifile);
+CURSOR initialize_cursor(CONTENT& content)
+{
+	POSITION position(content, content.begin(), content.begin()->chars.begin(), 0);
+	CURSOR cursor(content, position);
+	return cursor;
 }
 
 CSCREEN initialize_screen(std::string text, int max_rows, int max_cols)
