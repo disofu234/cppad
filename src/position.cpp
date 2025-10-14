@@ -150,7 +150,7 @@ char POSITION::prev()
         line_it--;
         char_it = line_it->chars.end();
         tabs_it = std::prev(line_it->tabs.end());
-        tabs_x = max_tabs_x();
+        tabs_x = max_tabs_x() + 1;
         x = line_it->chars.size();
         return '\n';
     }

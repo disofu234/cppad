@@ -28,7 +28,7 @@ SCREEN_CURSOR::SCREEN_CURSOR(CSCREEN& screen, int first_row, int target_x, int t
         throw std::out_of_range("screen cursor coordinates must be non-negative");
     }
 
-    if (target_x >= cols || target_y >= rows)
+    if (target_x > cols || target_y >= rows)
     {
         throw std::out_of_range("screen cursor coordinates exceed screen bounds");
     }
@@ -85,14 +85,8 @@ SCREEN_CURSOR::SCREEN_CURSOR(CSCREEN& screen, int first_row, int target_x, int t
             continue;
         }
 
-        int start_x = x;
         x += step.width;
-        if (current_row == first_row && y == target_y &&
-            target_x > start_x && target_x < x)
-        {
-            throw std::out_of_range("target_x is too large for content");
-        }
-        while (x >= cols)
+        while (x > cols)
         {
             wrapped_previous = true;
 
@@ -170,8 +164,7 @@ void SCREEN_CURSOR::insert(char ch)
         return;
     }
 
-    int advance = inserted.width > 0 ? inserted.width : 1;
-    x += advance;
+    x += inserted.width;
     while (x > cols)
     {
         if (y == rows - 1)

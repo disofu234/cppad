@@ -15,6 +15,8 @@ public:
 	POSITION(const POSITION& other);
 	void reset(const CONTENT_CURSOR& cc);
 
+	char get_char() const;
+
 	char next();
 	char prev();
 
@@ -32,8 +34,6 @@ protected:
 	TABS_IT tabs_it;
 	int tabs_x;
 	int x;
-
-	char get_char() const;
 
 	bool is_first_line() const;
 	bool is_at_contents_start() const;

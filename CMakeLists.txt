@@ -4,16 +4,6 @@ enable_testing()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-#[[
-add_executable(
-  cppad
-  src/main.cpp
-  src/screen.cpp
-  src/cursor.cpp
-  src/position.cpp
-  src/tabs.cpp)
-#]]
-
 include(FetchContent)
 FetchContent_Declare(
   googletest
@@ -60,8 +50,15 @@ gtest_discover_tests(test_content_cursor)
 gtest_discover_tests(test_screen)
 gtest_discover_tests(test_screen_cursor)
 
-#[[
+add_executable(
+  cppad
+  src/main.cpp
+  src/content_cursor.cpp
+  src/screen.cpp
+  src/screen_cursor.cpp
+  src/position.cpp
+  src/tabs.cpp)
+
 find_package(Curses REQUIRED)
 include_directories(${CURSES_INCLUDE_DIR})
 target_link_libraries(cppad ${CURSES_LIBRARIES})
-#]]

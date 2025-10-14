@@ -104,42 +104,62 @@ TEST_F(ScreenCursorTest, InsertTabAtOriginAdvancesToTabStop)
 	EXPECT_EQ(screen.print(), "        ");
 }
 
+TEST_F(ScreenCursorTest, InsertTabWithText)
+{
+	std::istringstream input("ab");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 16);
+	SCREEN_CURSOR cursor(screen, 0, 2, 0);
+
+	cursor.insert('\t');
+
+	EXPECT_EQ(cursor.get_x(), TAB_SIZE);
+	EXPECT_EQ(cursor.get_y(), 0);
+	EXPECT_EQ(screen.print(), "ab      ");
+}
+
+TEST_F(ScreenCursorTest, InsertTabWrapsAndScrolls)
+{
+	std::istringstream input("abcdefgh");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 5);
+	SCREEN_CURSOR cursor(screen, 0, 3, 1);
+
+	cursor.insert('\t');
+
+	EXPECT_EQ(cursor.get_x(), 1);
+	EXPECT_EQ(cursor.get_y(), 1);
+	EXPECT_EQ(screen.print(), "      ");
+}
+
 TEST_F(ScreenCursorTest, InsertCharWrapsToNextRow)
 {
-	std::istringstream input("");
+	std::istringstream input("abcd");
 	initialize_content(content, input);
 	CSCREEN screen(content, 2, 4);
-	SCREEN_CURSOR cursor(screen);
+	SCREEN_CURSOR cursor(screen, 0, 4, 0);
 
-	cursor.insert('a');
-	cursor.insert('b');
-	cursor.insert('c');
-	cursor.insert('d');
+	cursor.insert('e');
 
-	EXPECT_EQ(cursor.get_x(), 0);
+	EXPECT_EQ(cursor.get_x(), 1);
 	EXPECT_EQ(cursor.get_y(), 1);
-	EXPECT_EQ(screen.print(), "abcd");
+	EXPECT_EQ(screen.print(), "abcde");
 }
 
 TEST_F(ScreenCursorTest, InsertCharWrapTriggersScroll)
 {
-	std::istringstream input("");
+	std::istringstream input("abcdefgh");
 	initialize_content(content, input);
 	CSCREEN screen(content, 2, 4);
-	SCREEN_CURSOR cursor(screen);
+	SCREEN_CURSOR cursor(screen, 0, 4, 1);
 
-	for (char ch : std::string("abcdefg"))
-	{
-		cursor.insert(ch);
-	}
 	std::string before = screen.print();
+	cursor.insert('j');
 
-	cursor.insert('h');
-
-	EXPECT_EQ(cursor.get_x(), 0);
+	EXPECT_EQ(cursor.get_x(), 1);
 	EXPECT_EQ(cursor.get_y(), 1);
-	EXPECT_EQ(before, "abcdefg");
-	EXPECT_EQ(screen.print(), "efgh");
+	EXPECT_EQ(before, "abcdefgh");
+	EXPECT_EQ(screen.print(), "efghj");
 }
 
 TEST_F(ScreenCursorTest, InsertNewlineAdvancesRow)

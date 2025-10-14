@@ -1,5 +1,5 @@
 /build/
-/build-docker
+/build-host/
 .hello.cpp.swp
 /.devcontainer/
 /.vscode/

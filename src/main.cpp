@@ -1,18 +1,18 @@
 #include <ncurses.h>
 #include <fstream>
-#include "cursor.h"
+#include "content_cursor.h"
 #include "screen.h"
+#include "screen_cursor.h"
 
 class CPPAD
 {
 public:
-	CPPAD(std::ifstream& file, int max_y, int max_x) : 
-		screen(file, max_y, max_x - 1),
-		max_x(max_x),
-		max_y(max_y) { };
+	CPPAD(CSCREEN& screen, SCREEN_CURSOR& cursor) :
+		screen(screen), cursor(cursor) {}
 
 	void start()
 	{
+		std::cerr << "rows: " << screen.get_rows() << ", cols: " << screen.get_cols() << std::endl;
 		int ch;
 		while ((ch = getch()) != 3) // CTRL-C
 		{
@@ -33,33 +33,14 @@ public:
 	}
 
 private:
-	CSCREEN screen;
-	int max_x;
-	int max_y;
+	CSCREEN& screen;
+	SCREEN_CURSOR& cursor;
 
 	void handle_append(int ch)
 	{
-		PrintOperation op = screen.handle_append(ch);
-		if (op == Tab)
-		{
-			for (int i = 0; i < 4; i++)
-			{
-				addch_wrln(' ');
-			}
-			return;
-		}
-
-		addch_wrln(ch);
-		if (op == AfterCursor)
-		{
-			print_after_cursor();
-			return;
-		}
-		if (op == Screen)
-		{
-			print_screen();
-			return;
-		}
+		cursor.insert(ch);
+		print();
+		move(cursor.get_y(), cursor.get_x());
 	}
 	
 	void handle_action_char(int ch)
@@ -84,62 +65,43 @@ private:
 
 	void handle_left()
 	{
-		PrintOperation op = screen.handle_left();
-		if (op == Screen) {
-			print_screen();
-			return;
-		}
-		move(screen.get_y(), screen.get_x());
 	}
 
 	void handle_right()
 	{
-		PrintOperation op = screen.handle_right();
-		if (op == Screen) {
-			print_screen();
-			return;
-		}
-		move(screen.get_y(), screen.get_x());
 	}
 
-	void print_screen()
+	void print()
 	{
 		move(0, 0);
 		clrtobot();
-		print_iterator(screen.get_iterator_at_start());
-		move(screen.get_y(), screen.get_x());
+		std::string screen_content = screen.print();
+		addstr(screen_content.c_str());
 	}
 
-	void print_after_cursor()
-	{
-		clrtobot();
-		print_iterator(screen.get_iterator_at_cursor());
-		move(screen.get_y(), screen.get_x());
-	}
+	// void print_iterator(SCREEN_ITERATOR it)
+	// {
+	// 	int max_x, max_y;
+	// 	getmaxyx(stdscr, max_y, max_x);
+	// 	int x, y;
+	// 	while (!it.is_at_end())
+	// 	{
+	// 		char ch = it.next();
+	// 		addch_wrln(ch);
+	// 	}
+	// }
 
-	void print_iterator(SCREEN_ITERATOR it)
-	{
-		int max_x, max_y;
-		getmaxyx(stdscr, max_y, max_x);
-		int x, y;
-		while (!it.is_at_end())
-		{
-			char ch = it.next();
-			addch_wrln(ch);
-		}
-	}
-
-	void addch_wrln(char ch)
-	{
-		int x, y;
-		getyx(stdscr, y, x);
-		if (x == max_x - 1 && ch != '\n')
-		{
-			addch(' ');
-		}
-		getyx(stdscr, y, x);
-		addch(ch);
-	}
+	// void addch_wrln(char ch)
+	// {
+	// 	int x, y;
+	// 	getyx(stdscr, y, x);
+	// 	if (x == max_x - 1 && ch != '\n')
+	// 	{
+	// 		addch(' ');
+	// 	}
+	// 	getyx(stdscr, y, x);
+	// 	addch(ch);
+	// }
 
 	bool is_append_char(int ch)
 	{
@@ -168,6 +130,9 @@ int main(int argc, char *argv[])
 		file.open(filename);
 	}
 
+	CONTENT content{};
+	initialize_content(content, file);
+
 	initscr();
 	raw();
 	keypad(stdscr, TRUE);
@@ -175,6 +140,9 @@ int main(int argc, char *argv[])
 	int max_y, max_x;
 	getmaxyx(stdscr, max_y, max_x);
 
-	CPPAD cppad(file, max_y, max_x);
+	CSCREEN screen(content, max_y, max_x);
+	SCREEN_CURSOR cursor(screen);
+
+	CPPAD cppad(screen, cursor);
 	cppad.start();
 }
