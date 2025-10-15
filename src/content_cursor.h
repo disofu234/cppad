@@ -46,7 +46,6 @@ struct LEFT
 struct INSERT
 {
 	int width;
-	LINE_IT* new_line;
 };
 
 class CONTENT_CURSOR

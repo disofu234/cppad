@@ -40,12 +40,10 @@ INSERT CONTENT_CURSOR::insert(char ch)
 {
     INSERT result{};
     result.width = 0;
-    result.new_line = nullptr;
 
     if (ch == '\n')
     {
         insert_line();
-        result.new_line = &line_it;
         return result;
     }
 

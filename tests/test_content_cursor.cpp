@@ -28,7 +28,6 @@ TEST_F(ContentCursorTest, InsertNormal)
 	CONTENT_CURSOR cursor(content);
 	INSERT ins = cursor.insert('a');
 	EXPECT_EQ(ins.width, 1);
-	EXPECT_EQ(ins.new_line, nullptr);
 	EXPECT_EQ(cursor.get_char(), '\0');
 	EXPECT_EQ(cursor.get_line_it(), content.begin());
 	EXPECT_EQ(cursor.get_x(), 1);
@@ -92,9 +91,7 @@ TEST_F(ContentCursorTest, InsertLine)
 	initialize_content(content, input);
 	CONTENT_CURSOR cursor(content);
 	INSERT ins = cursor.insert('\n');
-	ASSERT_NE(ins.new_line, nullptr);
 	LINE_IT exp_line_it = std::next(content.begin());
-	EXPECT_EQ(*ins.new_line, exp_line_it);
 	EXPECT_EQ(ins.width, 0);
 	EXPECT_EQ(cursor.get_char(), '\0');
 	EXPECT_EQ(cursor.get_line_it(), exp_line_it);
@@ -161,9 +158,7 @@ TEST_F(ContentCursorTest, InsertLineMid)
 	initialize_content(content, input);
 	CONTENT_CURSOR cursor(content, content.begin(), 3);
 	INSERT ins = cursor.insert('\n');
-	ASSERT_NE(ins.new_line, nullptr);
 	LINE_IT exp_line_it = std::next(content.begin());
-	EXPECT_EQ(*ins.new_line, exp_line_it);
 	EXPECT_EQ(ins.width, 0);
 	EXPECT_EQ(cursor.get_char(), 'd');
 	EXPECT_EQ(cursor.get_line_it(), exp_line_it);
@@ -181,7 +176,6 @@ TEST_F(ContentCursorTest, InsertTab)
 	initialize_content(content, input);
 	CONTENT_CURSOR cursor(content);
 	INSERT ins = cursor.insert('\t');
-	EXPECT_EQ(ins.new_line, nullptr);
 	EXPECT_EQ(ins.width, TAB_SIZE);
 	EXPECT_EQ(cursor.get_char(), '\0');
 	EXPECT_EQ(cursor.get_line_it(), content.begin());
@@ -200,7 +194,6 @@ TEST_F(ContentCursorTest, InsertTabWithText)
 	initialize_content(content, input);
 	CONTENT_CURSOR cursor(content, content.begin(), 3);
 	INSERT ins = cursor.insert('\t');
-	EXPECT_EQ(ins.new_line, nullptr);
 	EXPECT_EQ(ins.width, TAB_SIZE - 3);
 	EXPECT_EQ(cursor.get_char(), '\0');
 	EXPECT_EQ(cursor.get_line_it(), content.begin());
@@ -220,7 +213,6 @@ TEST_F(ContentCursorTest, InsertBeforeTab)
 	CONTENT_CURSOR cursor(content);
 	INSERT ins = cursor.insert('a');
 	EXPECT_EQ(ins.width, 1);
-	EXPECT_EQ(ins.new_line, nullptr);
 	EXPECT_EQ(cursor.get_char(), '\t');
 	EXPECT_EQ(cursor.get_line_it(), content.begin());
 	EXPECT_EQ(cursor.get_x(), 1);
@@ -327,11 +319,9 @@ TEST_F(ContentCursorTest, InsertLineTabs)
 	initialize_content(content, input);
 	CONTENT_CURSOR cursor(content, content.begin(), 4);
 	INSERT ins = cursor.insert('\n');
-	ASSERT_NE(ins.new_line, nullptr);
 	EXPECT_EQ(ins.width, 0);
 	EXPECT_EQ(cursor.get_char(), 'e');
 	LINE_IT exp_line_it = std::next(content.begin());
-	EXPECT_EQ(*ins.new_line, exp_line_it);
 	EXPECT_EQ(cursor.get_line_it(), exp_line_it);
 	EXPECT_EQ(cursor.get_x(), 0);
 	TABS_IT exp_tabs_it = std::next(content.begin())->tabs.begin();
