@@ -44,8 +44,9 @@ TEST_F(ContentCursorTest, LeftNormal)
 	initialize_content(content, input);
 	CONTENT_CURSOR cursor(content, content.begin(), 1);
 	std::cout << cursor.get_x();
-	char ch = cursor.left();
-	EXPECT_EQ(ch, 'a');
+	LEFT l = cursor.left();
+	EXPECT_EQ(l.ch, 'a');
+	EXPECT_EQ(l.width, 1);
 	EXPECT_EQ(cursor.get_char(), 'a');
 	EXPECT_EQ(cursor.get_line_it(), content.begin());
 	EXPECT_EQ(cursor.get_x(), 0);
@@ -110,8 +111,9 @@ TEST_F(ContentCursorTest, LeftLine)
 	std::istringstream input("\n");
 	initialize_content(content, input);
 	CONTENT_CURSOR cursor(content, std::next(content.begin()));
-	char ch = cursor.left();
-	EXPECT_EQ(ch, '\n');
+	LEFT l = cursor.left();
+	EXPECT_EQ(l.ch, '\n');
+	EXPECT_EQ(l.width, 0);
 	LINE_IT exp_line_it = content.begin();
 	EXPECT_EQ(cursor.get_char(), '\0');
 	EXPECT_EQ(cursor.get_line_it(), exp_line_it);
@@ -235,8 +237,9 @@ TEST_F(ContentCursorTest, LeftTab)
 	std::istringstream input("a\tde");
 	initialize_content(content, input);
 	CONTENT_CURSOR cursor(content, content.begin(), 2);
-	char ch = cursor.left();
-	EXPECT_EQ(ch, '\t');
+	LEFT l = cursor.left();
+	EXPECT_EQ(l.ch, '\t');
+	EXPECT_EQ(l.width, TAB_SIZE - 1);
 	EXPECT_EQ(cursor.get_char(), '\t');
 	EXPECT_EQ(cursor.get_line_it(), content.begin());
 	EXPECT_EQ(cursor.get_x(), 1);

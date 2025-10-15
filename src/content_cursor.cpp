@@ -102,32 +102,36 @@ char CONTENT_CURSOR::backspace()
     return ch;
 }
 
-char CONTENT_CURSOR::left()
+LEFT CONTENT_CURSOR::left()
 {
-    char ch = prev_ch();
-    return ch == '\0' ? prev_line() : ch;
+    if (is_at_line_start())
+    {
+        return {prev_line(), 0};
+    }
+
+    if (is_tab_end())
+    {
+        int w = line_it->tabs.spaces(std::prev(tabs_it));
+        return {prev_ch(), w};
+    }
+
+    return {prev_ch(), 1};
 }
 
 RIGHT CONTENT_CURSOR::right()
 {
     if (is_at_line_end())
     {
-        char nl = next_line();
-        RIGHT r{nl, 0};
-        return r;
+        return {next_line(), 0};
     }
 
     if (is_tab_start())
     {
         int w = line_it->tabs.spaces(tabs_it);
-        char ch = next_ch();
-        RIGHT r{ch, w};
-        return r;
+        return {next_ch(), w}; 
     }
 
-    char ch = next_ch();
-    RIGHT r{ch, 1};
-    return r;
+    return {next_ch(), 1};
 }
 
 LINE_IT CONTENT_CURSOR::get_line_it() const

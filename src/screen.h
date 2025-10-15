@@ -16,6 +16,7 @@ public:
 
 	int get_rows() const;
 	int get_cols() const;
+	int get_spaces_in_last_row(LINE_CIT line_it) const;
 
 	void scroll_up();
 	void scroll_down();

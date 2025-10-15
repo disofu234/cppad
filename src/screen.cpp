@@ -50,6 +50,18 @@ int CSCREEN::get_cols() const
 	return cols;
 }
 
+int CSCREEN::get_spaces_in_last_row(LINE_CIT line_it) const
+{
+    int line_size = line_it->size();
+    if (line_size == 0)
+    {
+        return 0;
+    }
+
+    int remainder = line_size % cols;
+    return remainder == 0 ? cols : remainder;
+}
+
 void CSCREEN::scroll_up()
 {
 	first.prev_row();

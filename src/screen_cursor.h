@@ -12,6 +12,8 @@ public:
 	SCREEN_CURSOR(CSCREEN& screen, int first_row, int target_x, int target_y);
 
 	void insert(char ch);
+	bool right();
+	bool left();
 
 	int get_x() const;
 	int get_y() const;

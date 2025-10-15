@@ -190,19 +190,6 @@ int POSITION::max_tabs_x() const
     return tabs_it->prev_chars + line_it->tabs.spaces(tabs_it) - 1;
 }
 
-int FIRST_POSITION::get_spaces_in_last_row() const
-{
-    int line_size = line_it->size();
-    if (line_size == 0)
-    {
-        return 0;
-    }
-
-    int cols = screen.get_cols();
-    int remainder = line_size % cols;
-    return remainder == 0 ? cols : remainder;
-}
-
 bool POSITION::operator==(const POSITION& other) const
 {
     return char_it == other.char_it;
@@ -261,7 +248,8 @@ void FIRST_POSITION::prev_row()
     if (is_at_line_start())
     {
         prev();
-        for (int i = 0; i < get_spaces_in_last_row(); i++)
+        int backtrack = screen.get_spaces_in_last_row(line_it);
+        for (int i = 0; i < backtrack; i++)
         {
             prev();
         }

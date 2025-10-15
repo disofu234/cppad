@@ -37,6 +37,12 @@ struct RIGHT
 	int width;
 };
 
+struct LEFT
+{
+	char ch;
+	int width;
+};
+
 struct INSERT
 {
 	int width;
@@ -51,7 +57,7 @@ public:
 
 	INSERT insert(char ch);
 	char backspace();
-	char left();
+	LEFT left();
 	RIGHT right();
 
 	LINE_IT get_line_it() const;

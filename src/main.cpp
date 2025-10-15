@@ -12,7 +12,6 @@ public:
 
 	void start()
 	{
-		std::cerr << "rows: " << screen.get_rows() << ", cols: " << screen.get_cols() << std::endl;
 		int ch;
 		while ((ch = getch()) != 3) // CTRL-C
 		{
@@ -65,18 +64,38 @@ private:
 
 	void handle_left()
 	{
+		cursor.left();
+		print();
+		move(cursor.get_y(), cursor.get_x());
 	}
 
 	void handle_right()
 	{
+		cursor.right();
+		print();
+		move(cursor.get_y(), cursor.get_x());
 	}
 
 	void print()
 	{
 		move(0, 0);
 		clrtobot();
+
+		int max_x, max_y;
+		getmaxyx(stdscr, max_y, max_x);
+
 		std::string screen_content = screen.print();
-		addstr(screen_content.c_str());
+
+		for (char ch : screen_content)
+		{
+			int x, y;
+			getyx(stdscr, y, x);
+			if (x == max_x - 1 && ch != '\n')
+			{
+				move(y + 1, 0);
+			}
+			addch(ch);
+		}
 	}
 
 	// void print_iterator(SCREEN_ITERATOR it)
@@ -140,7 +159,7 @@ int main(int argc, char *argv[])
 	int max_y, max_x;
 	getmaxyx(stdscr, max_y, max_x);
 
-	CSCREEN screen(content, max_y, max_x);
+	CSCREEN screen(content, max_y, max_x - 1);
 	SCREEN_CURSOR cursor(screen);
 
 	CPPAD cppad(screen, cursor);

@@ -18,11 +18,6 @@ SCREEN_CURSOR::SCREEN_CURSOR(CSCREEN& screen, int first_row, int target_x, int t
     cols(screen.get_cols()),
     rows(screen.get_rows())
 {
-    if (cols <= 0 || rows <= 0)
-    {
-        throw std::out_of_range("screen dimensions must be positive");
-    }
-
     if (first_row < 0 || target_x < 0 || target_y < 0)
     {
         throw std::out_of_range("screen cursor coordinates must be non-negative");
@@ -34,86 +29,73 @@ SCREEN_CURSOR::SCREEN_CURSOR(CSCREEN& screen, int first_row, int target_x, int t
     }
 
     int current_row = 0;
-    bool wrapped_previous = false;
-
-    while (true)
+    while (current_row != first_row)
     {
-        if (current_row == first_row && y == target_y && x == target_x)
+        if (cc.is_at_contents_end())
         {
-            return;
+            throw std::out_of_range("target position is invalid");
         }
 
-        RIGHT step = cc.right();
-        if (step.ch == '\0')
+        if (right())
         {
-            throw std::out_of_range("requested screen cursor position is unreachable");
+            current_row++;
         }
 
-        if (step.ch == '\n')
+        bool invalid_position = current_row > first_row;
+        if (invalid_position)
         {
-            if (wrapped_previous)
+            throw std::out_of_range("target position is invalid");
+        }
+    }
+
+    // At this point either we've scrolled and y is at the last row, or there was
+    // no scrolling and x and y are both zero.
+    if (current_row > 0 && y > target_y)
+    {
+        while (!(y == target_y && x == target_x))
+        {
+            if (cc.is_at_contents_start())
             {
-                wrapped_previous = false;
-                continue;
+                throw std::out_of_range("target position is invalid");
             }
 
-            if (!wrapped_previous && current_row == first_row && y == target_y && target_x > x)
+            if (left())
             {
-                throw std::out_of_range("target_x is too large for content");
+                throw std::out_of_range("target position is invalid");
             }
 
-            if (y == rows - 1)
+            bool invalid_position =
+                y < target_y ||
+                (y == target_y && x < target_x);
+            
+            if (invalid_position)
             {
-                if (current_row == first_row)
-                {
-                    throw std::out_of_range("first_row is too large for content");
-                }
-
-                screen.scroll_down();
-                current_row++;
-                x = 0;
-                continue;
+                throw std::out_of_range("target position is invalid");
             }
-
-            if (current_row == first_row && y == target_y)
-            {
-                throw std::out_of_range("target_y is too large for content");
-            }
-
-            y++;
-            x = 0;
-            continue;
         }
 
-        x += step.width;
-        while (x > cols)
+        return;
+    }
+
+    while (!(y == target_y && x == target_x))
+    {
+        if (cc.is_at_contents_end())
         {
-            wrapped_previous = true;
-
-            x -= cols;
-            if (y == rows - 1)
-            {
-                if (current_row == first_row)
-                {
-                    throw std::out_of_range("first_row is too large for content");
-                }
-
-                screen.scroll_down();
-                current_row++;
-                continue;
-            }
-
-            if (current_row == first_row && y == target_y)
-            {
-                throw std::out_of_range("target_y is too large for content");
-            }
-
-            y++;
+            throw std::out_of_range("target position is invalid");
         }
 
-        if (current_row == first_row && y == target_y && x > target_x)
+        if (right())
         {
-            throw std::out_of_range("target_x is too large for content");
+            throw std::out_of_range("target position is invalid");
+        }
+
+        bool invalid_position =
+            y > target_y ||
+            (y == target_y && x > target_x);
+        
+        if (invalid_position)
+        {
+            throw std::out_of_range("target position is invalid");
         }
     }
 }
@@ -130,11 +112,6 @@ void SCREEN_CURSOR::insert(char ch)
         screen.first.reset(cc);
         if (ch == '\n')
         {
-            if (inserted.new_line == nullptr)
-            {
-                throw std::runtime_error("newline insertion missing iterator");
-            }
-
             if (was_at_line_start)
             {
                 screen.scroll_up();
@@ -152,32 +129,113 @@ void SCREEN_CURSOR::insert(char ch)
 
     if (ch == '\n')
     {
+        x = 0;
+
         if (y == rows - 1)
         {
             screen.scroll_down();
+            return;
         }
-        else
-        {
-            y++;
-        }
-        x = 0;
+
+        y++;
         return;
     }
 
     x += inserted.width;
-    while (x > cols)
+    while (x > cols || (!cc.is_at_line_end() && x == cols))
     {
+        x -= cols;
+
         if (y == rows - 1)
         {
             screen.scroll_down();
-        }
-        else
-        {
-            y++;
+            continue;
         }
 
-        x -= cols;
+        y++;
     }
+}
+
+bool SCREEN_CURSOR::right()
+{
+    RIGHT step = cc.right();
+    if (step.ch == '\0')
+    {
+        return false;
+    }
+
+    if (step.ch == '\n')
+    {
+        x = 0;
+
+        if (y == rows - 1)
+        {
+            screen.scroll_down();
+            return true;
+        }
+
+        y++;
+        return false;
+    }
+
+    x += step.width;
+    bool scrolled = false;
+    while (x > cols || (!cc.is_at_line_end() && x == cols))
+    {
+        x -= cols;
+
+        if (y == rows - 1)
+        {
+            screen.scroll_down();
+            scrolled = true;
+            continue;
+        }
+
+        y++;
+    }
+
+    return scrolled;
+}
+
+bool SCREEN_CURSOR::left()
+{
+    LEFT step = cc.left();
+    if (step.ch == '\0')
+    {
+        return false;
+    }
+
+    if (step.ch == '\n')
+    {
+        x = screen.get_spaces_in_last_row(cc.get_line_it());
+
+        if (y == 0)
+        {
+            screen.scroll_up();
+            return true;
+        }
+
+        y--;
+        return false;
+    }
+
+    x -= step.width;
+    bool scrolled = false;
+    while (x < 0)
+    {
+        x += cols;
+
+        if (y == 0)
+        {
+            screen.scroll_up();
+            scrolled = true;
+            continue;
+        }
+
+        y--;
+    }
+
+    return scrolled;
 }
 
 int SCREEN_CURSOR::get_x() const

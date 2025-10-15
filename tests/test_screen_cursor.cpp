@@ -10,7 +10,7 @@ protected:
 	CONTENT content;
 };
 
-TEST_F(ScreenCursorTest, PositionsCursorWithinView)
+TEST_F(ScreenCursorTest, ConstructorNoScroll)
 {
 	std::istringstream input("abcd\nefgh\nijkl\n");
 	initialize_content(content, input);
@@ -23,7 +23,7 @@ TEST_F(ScreenCursorTest, PositionsCursorWithinView)
 	EXPECT_EQ(screen.print(), "abcd\nefgh\nijkl");
 }
 
-TEST_F(ScreenCursorTest, ScrollsToRequestedFirstRow)
+TEST_F(ScreenCursorTest, ConstructorWithScroll)
 {
 	std::istringstream input("AAAA\nBBBB\nCCCC\nDDDD\n");
 	initialize_content(content, input);
@@ -34,6 +34,19 @@ TEST_F(ScreenCursorTest, ScrollsToRequestedFirstRow)
 	EXPECT_EQ(cursor.get_x(), 2);
 	EXPECT_EQ(cursor.get_y(), 1);
 	EXPECT_EQ(screen.print(), "BBBB\nCCCC");
+}
+
+TEST_F(ScreenCursorTest, ConstructorWithScrollBacktrack)
+{
+	std::istringstream input("AAAA\nBBBB\nCCCC\nDDDD\n");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 4);
+
+	SCREEN_CURSOR cursor(screen, 2, 2, 0);
+
+	EXPECT_EQ(cursor.get_x(), 2);
+	EXPECT_EQ(cursor.get_y(), 0);
+	EXPECT_EQ(screen.print(), "CCCC\nDDDD");
 }
 
 TEST_F(ScreenCursorTest, ThrowsWhenArgumentsOutOfBounds)
@@ -203,4 +216,233 @@ TEST_F(ScreenCursorTest, InsertTabAtOriginWrapsAndScrolls)
 	EXPECT_EQ(cursor.get_x(), 4);
 	EXPECT_EQ(cursor.get_y(), 1);
 	EXPECT_EQ(screen.print(), "        ");
+}
+
+TEST_F(ScreenCursorTest, RightWithinRow)
+{
+	std::istringstream input("a");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 4);
+	SCREEN_CURSOR cursor(screen);
+
+	bool scrolled = cursor.right();
+
+	EXPECT_FALSE(scrolled);
+	EXPECT_EQ(cursor.get_x(), 1);
+	EXPECT_EQ(cursor.get_y(), 0);
+}
+
+TEST_F(ScreenCursorTest, RightTab)
+{
+	std::istringstream input("\t");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 16);
+	SCREEN_CURSOR cursor(screen);
+
+	bool scrolled = cursor.right();
+
+	EXPECT_FALSE(scrolled);
+	EXPECT_EQ(cursor.get_x(), TAB_SIZE);
+	EXPECT_EQ(cursor.get_y(), 0);
+}
+
+TEST_F(ScreenCursorTest, RightTabWithText)
+{
+	std::istringstream input("ab\t");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 16);
+	SCREEN_CURSOR cursor(screen, 0, 2, 0);
+
+	bool scrolled = cursor.right();
+
+	EXPECT_FALSE(scrolled);
+	EXPECT_EQ(cursor.get_x(), TAB_SIZE);
+	EXPECT_EQ(cursor.get_y(), 0);
+}
+
+TEST_F(ScreenCursorTest, RightWraps)
+{
+	std::istringstream input("abcde");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 4);
+	SCREEN_CURSOR cursor(screen, 0, 3, 0);
+
+	bool scrolled = cursor.right();
+
+	EXPECT_FALSE(scrolled);
+	EXPECT_EQ(cursor.get_x(), 0);
+	EXPECT_EQ(cursor.get_y(), 1);
+}
+
+TEST_F(ScreenCursorTest, RightToLineEnd)
+{
+	std::istringstream input("abcd");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 4);
+	SCREEN_CURSOR cursor(screen, 0, 3, 0);
+
+	bool scrolled = cursor.right();
+
+	EXPECT_FALSE(scrolled);
+	EXPECT_EQ(cursor.get_x(), 4);
+	EXPECT_EQ(cursor.get_y(), 0);
+}
+
+TEST_F(ScreenCursorTest, RightScrollsAtBottomRow)
+{
+	std::istringstream input("abcdefghi");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 4);
+	SCREEN_CURSOR cursor(screen, 0, 3, 1);
+	std::string before = screen.print();
+
+	bool scrolled = cursor.right();
+
+	EXPECT_TRUE(scrolled);
+	EXPECT_EQ(cursor.get_y(), 1);
+	EXPECT_EQ(cursor.get_x(), 0);
+	EXPECT_EQ(screen.print(), "efghi");
+}
+
+TEST_F(ScreenCursorTest, RightScrollsOnNewlineAtBottomRow)
+{
+	std::istringstream input("line1\nline2\nline3\n");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 5);
+	SCREEN_CURSOR cursor(screen, 0, 5, 1);
+
+	bool scrolled = cursor.right();
+
+	EXPECT_TRUE(scrolled);
+	EXPECT_EQ(cursor.get_y(), 1);
+	EXPECT_EQ(cursor.get_x(), 0);
+	EXPECT_EQ(screen.print(), "line2\nline3");
+}
+
+TEST_F(ScreenCursorTest, RightNoOpAtEndOfContent)
+{
+	std::istringstream input("");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 4);
+	SCREEN_CURSOR cursor(screen);
+
+	bool scrolled = cursor.right();
+
+	EXPECT_FALSE(scrolled);
+	EXPECT_EQ(cursor.get_x(), 0);
+	EXPECT_EQ(cursor.get_y(), 0);
+}
+
+TEST_F(ScreenCursorTest, LeftWithinRow)
+{
+	std::istringstream input("a");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 4);
+	SCREEN_CURSOR cursor(screen, 0, 1, 0);
+
+	bool scrolled = cursor.left();
+
+	EXPECT_FALSE(scrolled);
+	EXPECT_EQ(cursor.get_x(), 0);
+	EXPECT_EQ(cursor.get_y(), 0);
+}
+
+TEST_F(ScreenCursorTest, LeftTab)
+{
+	std::istringstream input("\t");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 16);
+	SCREEN_CURSOR cursor(screen, 0, TAB_SIZE, 0);
+
+	bool scrolled = cursor.left();
+
+	EXPECT_FALSE(scrolled);
+	EXPECT_EQ(cursor.get_x(), 0);
+	EXPECT_EQ(cursor.get_y(), 0);
+}
+
+TEST_F(ScreenCursorTest, LeftTabWithText)
+{
+	std::istringstream input("ab\t");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 16);
+	SCREEN_CURSOR cursor(screen, 0, TAB_SIZE, 0);
+
+	bool scrolled = cursor.left();
+
+	EXPECT_FALSE(scrolled);
+	EXPECT_EQ(cursor.get_x(), 2);
+	EXPECT_EQ(cursor.get_y(), 0);
+}
+
+TEST_F(ScreenCursorTest, LeftWraps)
+{
+	std::istringstream input("abcde");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 4);
+	SCREEN_CURSOR cursor(screen, 0, 0, 1);
+
+	bool scrolled = cursor.left();
+
+	EXPECT_FALSE(scrolled);
+	EXPECT_EQ(cursor.get_x(), 3);
+	EXPECT_EQ(cursor.get_y(), 0);
+}
+
+TEST_F(ScreenCursorTest, LeftToLineEnd)
+{
+	std::istringstream input("abdefa\ncde");
+	initialize_content(content, input);
+	CSCREEN screen(content, 3, 4);
+	SCREEN_CURSOR cursor(screen, 0, 0, 2);
+
+	bool scrolled = cursor.left();
+
+	EXPECT_FALSE(scrolled);
+	EXPECT_EQ(cursor.get_x(), 2);
+	EXPECT_EQ(cursor.get_y(), 1);
+}
+
+TEST_F(ScreenCursorTest, LeftScrollsAtTopRow)
+{
+	std::istringstream input("abcdefghi");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 4);
+	SCREEN_CURSOR cursor(screen, 1, 0, 0);
+
+	bool scrolled = cursor.left();
+
+	EXPECT_TRUE(scrolled);
+	EXPECT_EQ(cursor.get_x(), 3);
+	EXPECT_EQ(cursor.get_y(), 0);
+	EXPECT_EQ(screen.print(), "abcdefgh");
+}
+
+TEST_F(ScreenCursorTest, LeftScrollsAtNewlineOnTopRow)
+{
+	std::istringstream input("abcd\nefghi");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 4);
+	SCREEN_CURSOR cursor(screen, 1, 0, 0);
+
+	bool scrolled = cursor.left();
+
+	EXPECT_TRUE(scrolled);
+	EXPECT_EQ(cursor.get_x(), 4);
+	EXPECT_EQ(cursor.get_y(), 0);
+	EXPECT_EQ(screen.print(), "abcd\nefgh");
+}
+
+TEST_F(ScreenCursorTest, LeftNoOpAtStartOfContent)
+{
+	std::istringstream input("");
+	initialize_content(content, input);
+	CSCREEN screen(content, 2, 4);
+	SCREEN_CURSOR cursor(screen);
+
+	bool scrolled = cursor.left();
+
+	EXPECT_FALSE(scrolled);
+	EXPECT_EQ(cursor.get_x(), 0);
+	EXPECT_EQ(cursor.get_y(), 0);
 }

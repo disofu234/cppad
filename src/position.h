@@ -58,7 +58,6 @@ public:
 
 private:
 	CSCREEN& screen;
-	int get_spaces_in_last_row() const;
 };
 
 #endif
