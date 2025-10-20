@@ -12,6 +12,7 @@ public:
 	SCREEN_CURSOR(CSCREEN& screen, int first_row, int target_x, int target_y);
 
 	void insert(char ch);
+	void backspace();
 	bool right();
 	bool left();
 

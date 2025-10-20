@@ -60,6 +60,9 @@ private:
 
 	void handle_backspace()
 	{
+		cursor.backspace();
+		print();
+		move(cursor.get_y(), cursor.get_x());
 	}
 
 	void handle_left()
@@ -81,11 +84,10 @@ private:
 		move(0, 0);
 		clrtobot();
 
-		int max_x, max_y;
-		getmaxyx(stdscr, max_y, max_x);
-
 		std::string screen_content = screen.print();
 
+		int max_x, max_y;
+		getmaxyx(stdscr, max_y, max_x);
 		for (char ch : screen_content)
 		{
 			int x, y;

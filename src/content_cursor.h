@@ -48,6 +48,12 @@ struct INSERT
 	int width;
 };
 
+struct BACKSPACE
+{
+	char ch;
+	int width;
+};
+
 class CONTENT_CURSOR
 {
 public:
@@ -55,7 +61,7 @@ public:
 	CONTENT_CURSOR(CONTENT& content, LINE_IT line_it, int x = 0);
 
 	INSERT insert(char ch);
-	char backspace();
+	BACKSPACE backspace();
 	LEFT left();
 	RIGHT right();
 

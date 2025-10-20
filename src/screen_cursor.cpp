@@ -1,6 +1,7 @@
 #include "screen_cursor.h"
 #include "tabs.h"
 #include <stdexcept>
+#include <iterator>
 
 SCREEN_CURSOR::SCREEN_CURSOR(CSCREEN& screen) :
     x(0),
@@ -153,6 +154,81 @@ void SCREEN_CURSOR::insert(char ch)
         }
 
         y++;
+    }
+}
+
+void SCREEN_CURSOR::backspace()
+{
+    int prev_row_width = 0;
+    if (!cc.is_first_line())
+    {
+        prev_row_width =
+            screen.get_spaces_in_last_row(std::prev(cc.get_line_it()));
+    }
+
+    BACKSPACE deleted = cc.backspace();
+    if (deleted.ch == '\0')
+    {
+        return;
+    }
+
+    if (deleted.ch == '\n')
+    {
+        if (y == 0)
+        {
+            screen.first.reset(cc);
+            if (prev_row_width == cols)
+            {
+                screen.scroll_up();
+                y++;
+                return;
+            }
+
+            for (int i = 0; i < prev_row_width; i++)
+            {
+                screen.first.prev();
+            }
+            x = prev_row_width;
+            return;
+        }
+
+        if (prev_row_width == cols)
+        {
+            return;
+        }
+
+        x = prev_row_width;
+        y--;
+        return;
+    }
+
+    x -= deleted.width;
+    while (x < 0)
+    {
+        x += cols;
+        y--;
+    }
+
+    if (y < 0)
+    {
+        y = 0;
+        screen.first.reset(cc);
+        for (int i = 0; i < x; i++)
+        {
+            screen.first.prev();
+        }
+
+        return;
+    }
+
+    if (y == 0 && x == 0)
+    {
+        screen.first.reset(cc);
+        if (cc.is_at_line_end())
+        {
+            screen.scroll_up();
+            x = cols;
+        }
     }
 }
 

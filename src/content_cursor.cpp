@@ -39,11 +39,11 @@ CONTENT_CURSOR::CONTENT_CURSOR(CONTENT& content, LINE_IT line_it, int x) :
 INSERT CONTENT_CURSOR::insert(char ch)
 {
     INSERT result{};
-    result.width = 0;
 
     if (ch == '\n')
     {
         insert_line();
+        result.width = 0;
         return result;
     }
 
@@ -66,22 +66,29 @@ INSERT CONTENT_CURSOR::insert(char ch)
     return result;
 }
 
-char CONTENT_CURSOR::backspace()
+BACKSPACE CONTENT_CURSOR::backspace()
 {
+    BACKSPACE result{};
+
     if (is_at_contents_start())
     {
-        return '\0';
+        result.ch = '\0';
+        result.width = 0;
+        return result;
     }
 
     if (is_at_line_start())
     {
+        result.ch = '\n';
+        result.width = 0;
         backspace_line();
-        return '\n';
+        return result;
     }
 
     if (is_tab_end())
     {
         TABS_IT prev_tabs_it = std::prev(tabs_it);
+        result.width = line_it->tabs.spaces(prev_tabs_it);
         int saved_tabs_x = prev_tabs_it->prev_chars;
         line_it->tabs.remove(tabs_it);
         tabs_it = prev_tabs_it;
@@ -89,15 +96,16 @@ char CONTENT_CURSOR::backspace()
     }
     else
     {
+        result.width = 1;
         line_it->tabs.add_prev_chars(tabs_it, -1);
         tabs_x--;
     }
 
     CHAR_IT prev_char_it = std::prev(char_it);
-    char ch = *prev_char_it;
+    result.ch = *prev_char_it;
     line_it->chars.erase(prev_char_it);
     x--;
-    return ch;
+    return result;
 }
 
 LEFT CONTENT_CURSOR::left()
@@ -165,7 +173,8 @@ void CONTENT_CURSOR::insert_line()
     while (!is_at_line_end())
     {
         right();
-        char ch = backspace();
+        BACKSPACE removed = backspace();
+        char ch = removed.ch;
         insert_cursor.insert(ch);
     }
 
@@ -186,7 +195,8 @@ void CONTENT_CURSOR::backspace_line()
     while (!is_at_line_end())
     {
         right();
-        char ch = backspace();
+        BACKSPACE removed = backspace();
+        char ch = removed.ch;
         insert_cursor.insert(ch);
     }
 
