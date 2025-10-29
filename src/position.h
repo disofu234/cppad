@@ -1,63 +1,46 @@
-#include "content_cursor.h"
 #include <cstdint>
+#include "content.h"
+#include "tabs.h"
 
 #ifndef POSITION_H
 #define POSITION_H
-
-class CSCREEN;
 
 class POSITION
 {
 public:
 	POSITION(CONTENT& content);
-	POSITION(CONTENT& content, LINE_IT line_it, int x = 0);
-
+	POSITION(CONTENT& content, LINE_IT line_it, int chars_x = 0);
 	POSITION(const POSITION& other);
-	void reset(const CONTENT_CURSOR& cc);
+
+	CONTENT& content;
+	LINE_IT line_it;
+	CHAR_IT char_it;
+	TABS_IT tabs_it;
+
+	int chars_x;
+	int spaces_x;
+	int tabs_x;
 
 	char get_char() const;
 
-	char next();
-	char prev();
-
-	int distance_to(const POSITION& other) const;
-
-	bool is_at_contents_end() const;
-	bool is_at_line_start() const;
-
-	bool operator==(const POSITION& other) const;
-	bool operator!=(const POSITION& other) const;
-
-protected:
-	CONTENT& content;
-	CHAR_IT char_it;
-	TABS_IT tabs_it;
-	int tabs_x;
-	int x;
-
 	bool is_first_line() const;
+	bool is_at_line_start() const;
 	bool is_at_contents_start() const;
 
 	bool is_last_line() const;
 	bool is_at_line_end() const;
+	bool is_at_contents_end() const;
 
-	int max_tabs_x() const;
+	bool is_tab() const;
+	bool is_after_tab() const;
 
-public:
-	LINE_IT line_it;
-};
+	virtual char next();
+	virtual char prev();
 
-class FIRST_POSITION : public POSITION
-{
-public:
-	FIRST_POSITION(CSCREEN& screen);
+	void reset(const POSITION& other);
 
-	void next_row();
-	void prev_row();
-	void set(LINE_IT line_it, int x = 0);
-
-private:
-	CSCREEN& screen;
+	bool operator==(const POSITION& other) const;
+	bool operator!=(const POSITION& other) const;
 };
 
 #endif

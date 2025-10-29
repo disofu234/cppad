@@ -1,7 +1,7 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 
-#include "position.h"
+#include "first_position.h"
 
 class CSCREEN
 {
@@ -9,7 +9,6 @@ public:
 	CSCREEN(CONTENT& content, int rows, int cols);
 
 	CONTENT& content;
-
 	FIRST_POSITION first;
 
 	std::string print();

@@ -55,6 +55,12 @@ private:
 			case KEY_RIGHT:
 				handle_right();
 				return;
+			case KEY_UP:
+				handle_up();
+				return;
+			case KEY_DOWN:
+				handle_down();
+				return;
 		}
 	}
 
@@ -75,6 +81,20 @@ private:
 	void handle_right()
 	{
 		cursor.right();
+		print();
+		move(cursor.get_y(), cursor.get_x());
+	}
+
+	void handle_up()
+	{
+		cursor.up();
+		print();
+		move(cursor.get_y(), cursor.get_x());
+	}
+
+	void handle_down()
+	{
+		cursor.down();
 		print();
 		move(cursor.get_y(), cursor.get_x());
 	}

@@ -1,7 +1,5 @@
 #include "screen_cursor.h"
 #include "tabs.h"
-#include <stdexcept>
-#include <iterator>
 
 SCREEN_CURSOR::SCREEN_CURSOR(CSCREEN& screen) :
     x(0),
@@ -11,7 +9,7 @@ SCREEN_CURSOR::SCREEN_CURSOR(CSCREEN& screen) :
     cols(screen.get_cols()),
     rows(screen.get_rows()) {}
 
-SCREEN_CURSOR::SCREEN_CURSOR(CSCREEN& screen, int first_row, int target_x, int target_y) :
+SCREEN_CURSOR::SCREEN_CURSOR(CSCREEN& screen, int target_first_row, int target_x, int target_y) :
     x(0),
     y(0),
     screen(screen),
@@ -19,7 +17,7 @@ SCREEN_CURSOR::SCREEN_CURSOR(CSCREEN& screen, int first_row, int target_x, int t
     cols(screen.get_cols()),
     rows(screen.get_rows())
 {
-    if (first_row < 0 || target_x < 0 || target_y < 0)
+    if (target_first_row < 0 || target_x < 0 || target_y < 0)
     {
         throw std::out_of_range("screen cursor coordinates must be non-negative");
     }
@@ -29,75 +27,42 @@ SCREEN_CURSOR::SCREEN_CURSOR(CSCREEN& screen, int first_row, int target_x, int t
         throw std::out_of_range("screen cursor coordinates exceed screen bounds");
     }
 
-    int current_row = 0;
-    while (current_row != first_row)
+    for (int i = 0; i < target_first_row; i++)
+    {
+        screen.scroll_down();
+    }
+
+    cc.reset(screen.first);
+    if (cc.is_at_contents_end())
+    {
+        throw std::out_of_range("target position is invalid");
+    }
+
+    x += cc.spaces_x - screen.first.spaces_x;
+    while (x > cols || (!cc.is_at_line_end() && x == cols))
+    {
+        x -= cols;
+        y++;
+    }
+
+    while (y < target_y || x < target_x)
     {
         if (cc.is_at_contents_end())
         {
             throw std::out_of_range("target position is invalid");
         }
 
-        if (right())
-        {
-            current_row++;
-        }
+        RIGHT r = right();
 
-        bool invalid_position = current_row > first_row;
-        if (invalid_position)
+        if (r.scrolls > 0)
         {
             throw std::out_of_range("target position is invalid");
         }
     }
-
-    // At this point either we've scrolled and y is at the last row, or there was
-    // no scrolling and x and y are both zero.
-    if (current_row > 0 && y > target_y)
+    
+    if (y != target_y || x != target_x)
     {
-        while (!(y == target_y && x == target_x))
-        {
-            if (cc.is_at_contents_start())
-            {
-                throw std::out_of_range("target position is invalid");
-            }
-
-            if (left())
-            {
-                throw std::out_of_range("target position is invalid");
-            }
-
-            bool invalid_position =
-                y < target_y ||
-                (y == target_y && x < target_x);
-            
-            if (invalid_position)
-            {
-                throw std::out_of_range("target position is invalid");
-            }
-        }
-
-        return;
-    }
-
-    while (!(y == target_y && x == target_x))
-    {
-        if (cc.is_at_contents_end())
-        {
-            throw std::out_of_range("target position is invalid");
-        }
-
-        if (right())
-        {
-            throw std::out_of_range("target position is invalid");
-        }
-
-        bool invalid_position =
-            y > target_y ||
-            (y == target_y && x > target_x);
-        
-        if (invalid_position)
-        {
-            throw std::out_of_range("target position is invalid");
-        }
+        throw std::out_of_range("target position is invalid");
     }
 }
 
@@ -108,30 +73,26 @@ void SCREEN_CURSOR::insert(char ch)
 
     INSERT inserted = cc.insert(ch);
 
-    if (is_first_modified)
-    {
-        screen.first.reset(cc);
-        if (ch == '\n')
-        {
-            if (was_at_line_start)
-            {
-                screen.scroll_up();
-            }
-        }
-        else
-        {
-            int spaces = inserted.width;
-            for (int i = 0; i < spaces; i++)
-            {
-                screen.first.prev();
-            }
-        }
-    }
-
     if (ch == '\n')
     {
-        x = 0;
+        if (is_first_modified)
+        {
+            screen.first.reset(cc);
+            if (y == rows - 1)
+            {
+                return;
+            }
+            screen.scroll_up();
+            y++;
+            return;
+        }
 
+        if (x == 0 && !was_at_line_start)
+        {
+            return;
+        }
+
+        x = 0;
         if (y == rows - 1)
         {
             screen.scroll_down();
@@ -140,6 +101,15 @@ void SCREEN_CURSOR::insert(char ch)
 
         y++;
         return;
+    }
+
+    if (is_first_modified)
+    {
+        screen.first.reset(cc);
+        for (int i = 0; i < inserted.width; i++)
+        {
+            screen.first.prev();
+        }
     }
 
     x += inserted.width;
@@ -163,7 +133,7 @@ void SCREEN_CURSOR::backspace()
     if (!cc.is_first_line())
     {
         prev_row_width =
-            screen.get_spaces_in_last_row(std::prev(cc.get_line_it()));
+            screen.get_spaces_in_last_row(std::prev(cc.line_it));
     }
 
     BACKSPACE deleted = cc.backspace();
@@ -184,11 +154,11 @@ void SCREEN_CURSOR::backspace()
                 return;
             }
 
-            for (int i = 0; i < prev_row_width; i++)
+            x = prev_row_width;
+            for (int i = 0; i < x; i++)
             {
                 screen.first.prev();
             }
-            x = prev_row_width;
             return;
         }
 
@@ -221,41 +191,61 @@ void SCREEN_CURSOR::backspace()
         return;
     }
 
-    if (y == 0 && x == 0)
+    if (x == 0)
     {
-        screen.first.reset(cc);
-        if (cc.is_at_line_end())
+        if (y == 0)
         {
-            screen.scroll_up();
+            screen.first.reset(cc);
+            if (!cc.is_at_contents_start())
+            {
+                screen.scroll_up();
+                if (cc.is_at_line_end() && !cc.is_at_line_start())
+                {
+                    x = cols;
+                    return;
+                }
+
+                y++;
+                return;
+            }
+
+            return;
+        }
+
+        if (cc.is_at_line_end() && !cc.is_at_line_start())
+        {
             x = cols;
+            y--;
+            return;
         }
     }
 }
 
-bool SCREEN_CURSOR::right()
+RIGHT SCREEN_CURSOR::right()
 {
-    RIGHT step = cc.right();
-    if (step.ch == '\0')
+    RIGHT r = cc.right();
+    r.scrolls = 0;
+    if (r.ch == '\0')
     {
-        return false;
+        return r;
     }
 
-    if (step.ch == '\n')
+    if (r.ch == '\n')
     {
         x = 0;
 
         if (y == rows - 1)
         {
             screen.scroll_down();
-            return true;
+            r.scrolls++;
+            return r;
         }
 
         y++;
-        return false;
+        return r;
     }
 
-    x += step.width;
-    bool scrolled = false;
+    x += r.width;
     while (x > cols || (!cc.is_at_line_end() && x == cols))
     {
         x -= cols;
@@ -263,40 +253,41 @@ bool SCREEN_CURSOR::right()
         if (y == rows - 1)
         {
             screen.scroll_down();
-            scrolled = true;
+            r.scrolls++;
             continue;
         }
 
         y++;
     }
 
-    return scrolled;
+    return r;
 }
 
-bool SCREEN_CURSOR::left()
+LEFT SCREEN_CURSOR::left()
 {
-    LEFT step = cc.left();
-    if (step.ch == '\0')
+    LEFT l = cc.left();
+    l.scrolls = 0;
+    if (l.ch == '\0')
     {
-        return false;
+        return l;
     }
 
-    if (step.ch == '\n')
+    if (l.ch == '\n')
     {
-        x = screen.get_spaces_in_last_row(cc.get_line_it());
+        x = screen.get_spaces_in_last_row(cc.line_it);
 
         if (y == 0)
         {
             screen.scroll_up();
-            return true;
+            l.scrolls++;
+            return l;
         }
 
         y--;
-        return false;
+        return l;
     }
 
-    x -= step.width;
-    bool scrolled = false;
+    x -= l.width;
     while (x < 0)
     {
         x += cols;
@@ -304,14 +295,106 @@ bool SCREEN_CURSOR::left()
         if (y == 0)
         {
             screen.scroll_up();
-            scrolled = true;
+            l.scrolls++;
             continue;
         }
 
         y--;
     }
 
-    return scrolled;
+    return l;
+}
+
+UP SCREEN_CURSOR::up()
+{
+    UP u;
+    u.scrolls = 0;
+
+    if (is_at_content_first_row())
+    {
+        return u;
+    }
+
+    int old_x = x;
+    int old_y = y;
+    int prev_y = old_y - 1;
+    bool was_prev_row = false;
+    while (true)
+    {
+        LEFT l = left();
+        u.scrolls += l.scrolls;
+
+        bool is_prev_row =
+            y == prev_y && u.scrolls == 0 ||
+            y == old_y && u.scrolls == 1;
+        
+        bool is_past_prev_row =
+            y < prev_y ||
+            y == prev_y && u.scrolls > 0 ||
+            y == old_y && u.scrolls > 1;
+
+        if (cc.is_at_contents_start() ||
+            is_past_prev_row ||
+            is_prev_row && x <= old_x)
+        {
+            bool should_backtrack = was_prev_row && !is_prev_row;
+            if (should_backtrack)
+            {
+                right();
+            }
+            break;
+        }
+
+        was_prev_row = is_prev_row;
+    }
+
+    return u;
+}
+
+DOWN SCREEN_CURSOR::down()
+{
+    DOWN d;
+    d.scrolls = 0;
+
+    if (is_at_content_last_row())
+    {
+        return d;
+    }
+    
+    int old_x = x;
+    int old_y = y;
+    int next_y = old_y + 1;
+    bool was_next_row = false;
+    while (true)
+    {
+        RIGHT r = right();
+        d.scrolls += r.scrolls;
+
+        bool is_next_row =
+            y == next_y && d.scrolls == 0 ||
+            y == old_y && d.scrolls == 1;
+        
+        bool is_past_next_row =
+            y > next_y ||
+            y == next_y && d.scrolls > 0 ||
+            y == old_y && d.scrolls > 1;
+
+        if (cc.is_at_contents_end() ||
+            is_past_next_row ||
+            is_next_row && x >= old_x)
+        {
+            bool should_backtrack = was_next_row && (!is_next_row || x > old_x);
+            if (should_backtrack)
+            {
+                left();
+            }
+            break;
+        }
+
+        was_next_row = is_next_row;
+    }
+
+    return d;
 }
 
 int SCREEN_CURSOR::get_x() const
@@ -322,4 +405,50 @@ int SCREEN_CURSOR::get_x() const
 int SCREEN_CURSOR::get_y() const
 {
     return y;
+}
+
+bool SCREEN_CURSOR::is_at_last_row_in_line() const
+{
+    return get_row_in_line() == get_num_rows_in_line() - 1;
+}
+
+bool SCREEN_CURSOR::is_at_first_row_in_line() const
+{
+    return get_row_in_line() == 0;
+}
+
+bool SCREEN_CURSOR::is_at_content_first_row() const
+{
+    return cc.is_first_line() && is_at_first_row_in_line();
+}
+
+bool SCREEN_CURSOR::is_at_content_last_row() const
+{
+    return cc.is_last_line() && is_at_last_row_in_line();
+}
+
+int SCREEN_CURSOR::get_num_rows_in_line() const
+{
+    int size = cc.line_it->size();
+    if (size == 0)
+    {
+        return 1;
+    }
+
+    if (size % cols == 0)
+    {
+        return size / cols;
+    }
+
+    return (size / cols) + 1;
+}
+
+int SCREEN_CURSOR::get_row_in_line() const
+{
+    if (cc.is_at_line_end())
+    {
+        return (cc.spaces_x - 1) / cols;
+    }
+
+    return cc.spaces_x / cols;
 }

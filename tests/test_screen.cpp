@@ -43,7 +43,7 @@ TEST_F(ScreenTest, MoveFirstNextAndPrevRowLine)
 
 TEST_F(ScreenTest, MoveFirstNextAndPrevRowEmpty)
 {
-	std::istringstream input("abc");
+	std::istringstream input("abcd");
 	initialize_content(content, input);
 	CSCREEN screen(content, 1, 4);
 
@@ -51,7 +51,7 @@ TEST_F(ScreenTest, MoveFirstNextAndPrevRowEmpty)
 	EXPECT_EQ(screen.print(), "");
 
 	screen.first.prev_row();
-	EXPECT_EQ(screen.print(), "abc");
+	EXPECT_EQ(screen.print(), "abcd");
 }
 
 TEST_F(ScreenTest, MoveFirstNextAndPrevRowEmptyLine)

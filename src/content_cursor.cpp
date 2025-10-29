@@ -1,40 +1,8 @@
 #include "content_cursor.h"
 
-int LINE::size() const
-{
-    return chars.size() - tabs.tab_count() + tabs.spaces();
-}
-
-CONTENT_CURSOR::CONTENT_CURSOR(CONTENT& content) :
-    content(content),
-    line_it(content.begin()),
-    char_it(line_it->chars.begin()),
-    x(0),
-    tabs_it(line_it->tabs.begin()),
-    tabs_x(0) {}
-
-CONTENT_CURSOR::CONTENT_CURSOR(CONTENT& content, LINE_IT line_it, int x) :
-    content(content),
-    line_it(line_it),
-    char_it(line_it->chars.begin()),
-    x(0),
-    tabs_it(line_it->tabs.begin()),
-    tabs_x(0)
-{
-    if (x == line_it->chars.size())
-    {
-        this->x = line_it->chars.size();
-        char_it = line_it->chars.end();
-        tabs_it = std::prev(line_it->tabs.end());
-        tabs_x = tabs_it->prev_chars;
-        return;
-    }
-
-    for (int i = 0; i < x; i++)
-    {
-        next_ch();
-    }
-}
+CONTENT_CURSOR::CONTENT_CURSOR(CONTENT& content) : POSITION(content) {}
+CONTENT_CURSOR::CONTENT_CURSOR(CONTENT& content, LINE_IT line_it, int chars_x)
+    : POSITION(content, line_it, chars_x) {}
 
 INSERT CONTENT_CURSOR::insert(char ch)
 {
@@ -62,7 +30,8 @@ INSERT CONTENT_CURSOR::insert(char ch)
     }
 
     line_it->chars.insert(char_it, ch);
-    x++;
+    chars_x++;
+    spaces_x += result.width;
     return result;
 }
 
@@ -85,7 +54,7 @@ BACKSPACE CONTENT_CURSOR::backspace()
         return result;
     }
 
-    if (is_tab_end())
+    if (is_after_tab())
     {
         TABS_IT prev_tabs_it = std::prev(tabs_it);
         result.width = line_it->tabs.spaces(prev_tabs_it);
@@ -104,65 +73,51 @@ BACKSPACE CONTENT_CURSOR::backspace()
     CHAR_IT prev_char_it = std::prev(char_it);
     result.ch = *prev_char_it;
     line_it->chars.erase(prev_char_it);
-    x--;
+    chars_x--;
+    spaces_x -= result.width;
     return result;
 }
 
 LEFT CONTENT_CURSOR::left()
 {
-    if (is_at_line_start())
+    LEFT result{};
+    result.ch = prev();
+    result.width = 0;
+
+    if (result.ch == '\0' || result.ch == '\n')
     {
-        return {prev_line(), 0};
+        return result;
     }
 
-    if (is_tab_end())
+    if (is_tab())
     {
-        int w = line_it->tabs.spaces(std::prev(tabs_it));
-        return {prev_ch(), w};
+        result.width = line_it->tabs.spaces(tabs_it);
+        return result;
     }
 
-    return {prev_ch(), 1};
+    result.width = 1;
+    return result;
 }
 
 RIGHT CONTENT_CURSOR::right()
 {
-    if (is_at_line_end())
+    RIGHT result{};
+    result.ch = next();
+    result.width = 0;
+
+    if (result.ch == '\0' || result.ch == '\n')
     {
-        return {next_line(), 0};
+        return result;
     }
 
-    if (is_tab_start())
+    if (is_after_tab())
     {
-        int w = line_it->tabs.spaces(tabs_it);
-        return {next_ch(), w}; 
+        result.width = line_it->tabs.spaces(std::prev(tabs_it));
+        return result;
     }
 
-    return {next_ch(), 1};
-}
-
-LINE_IT CONTENT_CURSOR::get_line_it() const
-{
-    return line_it;
-}
-
-CHAR_IT CONTENT_CURSOR::get_char_it() const
-{
-    return char_it;
-}
-
-int CONTENT_CURSOR::get_x() const
-{
-    return x;
-}
-
-char CONTENT_CURSOR::get_char() const
-{
-    if (is_at_line_end())
-    {
-        return '\0';
-    }
-
-    return *char_it;
+    result.width = 1;
+    return result;
 }
 
 void CONTENT_CURSOR::insert_line()
@@ -178,19 +133,29 @@ void CONTENT_CURSOR::insert_line()
         insert_cursor.insert(ch);
     }
 
-    next_line();
+    line_it = new_line_it;
+    char_it = new_line_it->chars.begin();
+    tabs_it = new_line_it->tabs.begin();
+
+    chars_x = 0;
+    spaces_x = 0;
+    tabs_x = 0;
 }
 
 void CONTENT_CURSOR::backspace_line()
 {
     LINE_IT prev_line_it = std::prev(line_it);
+    if (prev_line_it->chars.empty())
+    {
+        content.erase(prev_line_it);
+        return;
+    }
+
     CONTENT_CURSOR insert_cursor(content, prev_line_it, prev_line_it->chars.size());
     
     // Save the position where we want to end up after the operation
-    CHAR_IT saved_char_it = std::prev(prev_line_it->chars.end());
-    int saved_x = prev_line_it->chars.size();
-    TABS_IT saved_tabs_it = std::prev(prev_line_it->tabs.end());
-    int saved_tabs_x = saved_tabs_it->prev_chars;
+    POSITION saved_position = insert_cursor;
+    saved_position.prev();
 
     while (!is_at_line_end())
     {
@@ -203,159 +168,6 @@ void CONTENT_CURSOR::backspace_line()
     content.erase(line_it);
     
     // Set cursor to the saved position
-    line_it = prev_line_it;
-    char_it = std::next(saved_char_it);
-    x = saved_x;
-    tabs_it = saved_tabs_it;
-    tabs_x = saved_tabs_x;
-}
-
-char CONTENT_CURSOR::next_ch()
-{
-    if (is_at_line_end())
-    {
-        return '\0';
-    }
-
-    if (is_tab_start())
-    {
-        int spaces = line_it->tabs.spaces(tabs_it);
-        tabs_it++;
-        tabs_x = 0;
-    }
-    else
-    {
-        tabs_x++;
-    }
-
-    char ch = *char_it;
-    char_it++;
-    x++;
-    return ch;
-}
-
-char CONTENT_CURSOR::prev_ch()
-{
-    if (is_at_line_start())
-    {
-        return '\0';
-    }
-    
-    if (is_tab_end())
-    {
-        (void)line_it->tabs.spaces(tabs_it);
-        tabs_it--;
-        tabs_x = tabs_it->prev_chars;
-    }
-    else
-    {
-        tabs_x--;
-    }
-
-    char_it--;
-    x--;
-    return *char_it;
-}
-
-char CONTENT_CURSOR::next_line()
-{
-    if (is_last_line())
-    {
-        return '\0';
-    }
-
-    line_it++;
-    char_it = line_it->chars.begin();
-    x = 0;
-    tabs_it = line_it->tabs.begin();
-    tabs_x = 0;
-    return '\n';
-}
-
-char CONTENT_CURSOR::prev_line()
-{
-    if (is_first_line())
-    {
-        return '\0';
-    }
-
-    line_it--;
-    char_it = line_it->chars.end();
-    x = line_it->chars.size();
-    tabs_it = std::prev(line_it->tabs.end());
-    tabs_x = tabs_it->prev_chars;
-    return '\n';
-}
-
-bool CONTENT_CURSOR::is_first_line() const
-{
-    return line_it == content.begin();
-}
-
-bool CONTENT_CURSOR::is_at_line_start() const
-{
-    return char_it == line_it->chars.begin();
-}
-
-bool CONTENT_CURSOR::is_at_contents_start() const
-{
-    return is_first_line() && is_at_line_start();
-}
-
-bool CONTENT_CURSOR::is_last_line() const
-{
-    return line_it == std::prev(content.end());
-}
-
-bool CONTENT_CURSOR::is_at_line_end() const
-{
-    return char_it == line_it->chars.end();
-}
-
-bool CONTENT_CURSOR::is_at_contents_end() const
-{
-    return is_last_line() && is_at_line_end();
-}
-
-bool CONTENT_CURSOR::is_tab_start() const
-{
-    return *char_it == '\t';
-}
-
-bool CONTENT_CURSOR::is_tab_end() const
-{
-    return *std::prev(char_it) == '\t';
-}
-
-TABS_IT CONTENT_CURSOR::get_tabs_it() const
-{
-    return tabs_it;
-}
-
-int CONTENT_CURSOR::get_tabs_x() const
-{
-    return tabs_x;
-}
-
-void initialize_content(CONTENT& content, std::istream& input)
-{
-    content.push_back(LINE());
-    CONTENT_CURSOR insert_cursor(content);
-    char c;
-    while (input.get(c))
-    {
-        insert_cursor.insert(c);
-    }
-}
-
-std::string get_content_string(CONTENT& content)
-{
-    std::ostringstream oss;
-    CONTENT_CURSOR read_cursor(content);
-    while (!read_cursor.is_at_contents_end())
-    {
-        RIGHT r = read_cursor.right();
-        oss << r.ch;
-    }
-    return oss.str();
+    saved_position.next();
+    reset(saved_position);
 }

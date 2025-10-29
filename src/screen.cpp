@@ -4,13 +4,12 @@ CSCREEN::CSCREEN(CONTENT& content, int rows, int cols) :
 	content(content),
 	rows(rows),
 	cols(cols),
-	first(*this)
-{}
+	first(*this) {}
 
 std::string CSCREEN::print()
 {
     std::string output;
-    POSITION pos = first;
+    FIRST_POSITION pos = first;
     int curr_row = 0;
     int curr_col = 0;
     while (!pos.is_at_contents_end())
