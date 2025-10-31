@@ -162,13 +162,17 @@ void SCREEN_CURSOR::backspace()
             return;
         }
 
-        if (prev_row_width == cols)
+        if (prev_row_width == cols && !cc.is_at_line_end())
         {
             return;
         }
 
         x = prev_row_width;
         y--;
+        if (x == 0 && y == 0)
+        {
+            screen.first.reset(cc);
+        }
         return;
     }
 
@@ -196,19 +200,19 @@ void SCREEN_CURSOR::backspace()
         if (y == 0)
         {
             screen.first.reset(cc);
-            if (!cc.is_at_contents_start())
+            if (cc.is_at_contents_start())
             {
-                screen.scroll_up();
-                if (cc.is_at_line_end() && !cc.is_at_line_start())
-                {
-                    x = cols;
-                    return;
-                }
-
-                y++;
                 return;
             }
 
+            screen.scroll_up();
+            if (cc.is_at_line_end() && !cc.is_at_line_start())
+            {
+                x = cols;
+                return;
+            }
+
+            y++;
             return;
         }
 
