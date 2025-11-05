@@ -4,150 +4,143 @@
 #include "screen.h"
 #include "screen_cursor.h"
 
+#define CTRL_X 24
+#define CTRL_O 15
+
 class CPPAD
 {
 public:
-	CPPAD(CSCREEN& screen, SCREEN_CURSOR& cursor) :
-		screen(screen), cursor(cursor) {}
+	CPPAD(
+		CONTENT& content,
+		CSCREEN& screen,
+		SCREEN_CURSOR& cursor,
+		const std::string& filename,
+		WINDOW* text_win,
+		WINDOW* status_win)
+		: content(content),
+		  screen(screen),
+		  cursor(cursor),
+		  filename(filename),
+		  text_win(text_win),
+		  status_win(status_win),
+		  is_modified(false) {}
 
 	void start()
 	{
+		print();
+
 		int ch;
-		while ((ch = getch()) != 3) // CTRL-C
+		while (true)
 		{
-			if (is_append_char(ch))
+			ch = wgetch(text_win);
+			if (ch == CTRL_X)
 			{
-				handle_append(ch);
+				break;
 			}
-			else
-			{
-				handle_action_char(ch);
-			}
+
+			handle_key(ch);
+			print();
 		}
-		
-		// std::string scontents = get_string_content(content_state.contents);
-		// save_contents_to_file(filename, scontents);
-		
+
 		endwin();
 	}
 
 private:
+	CONTENT& content;
 	CSCREEN& screen;
 	SCREEN_CURSOR& cursor;
+	const std::string& filename;
+	WINDOW* text_win;
+	WINDOW* status_win;
+	bool is_modified;
 
-	void handle_append(int ch)
+	void handle_key(int ch)
 	{
-		cursor.insert(ch);
-		print();
-		move(cursor.get_y(), cursor.get_x());
-	}
-	
-	void handle_action_char(int ch)
-	{
+		if (is_append_char(ch))
+		{
+			cursor.insert(ch);
+			is_modified = true;
+			return;
+		}
+
 		switch (ch)
 		{
 			case KEY_BACKSPACE:
-				handle_backspace();
+				cursor.backspace();
+				is_modified = true;
 				return;
 			case KEY_LEFT:
-				handle_left();
+				cursor.left();
 				return;
 			case KEY_RIGHT:
-				handle_right();
+				cursor.right();
 				return;
 			case KEY_UP:
-				handle_up();
+				cursor.up();
 				return;
 			case KEY_DOWN:
-				handle_down();
+				cursor.down();
+				return;
+			case CTRL_O:
+				save();
+				is_modified = false;
 				return;
 		}
-	}
-
-	void handle_backspace()
-	{
-		cursor.backspace();
-		print();
-		move(cursor.get_y(), cursor.get_x());
-	}
-
-	void handle_left()
-	{
-		cursor.left();
-		print();
-		move(cursor.get_y(), cursor.get_x());
-	}
-
-	void handle_right()
-	{
-		cursor.right();
-		print();
-		move(cursor.get_y(), cursor.get_x());
-	}
-
-	void handle_up()
-	{
-		cursor.up();
-		print();
-		move(cursor.get_y(), cursor.get_x());
-	}
-
-	void handle_down()
-	{
-		cursor.down();
-		print();
-		move(cursor.get_y(), cursor.get_x());
 	}
 
 	void print()
 	{
-		move(0, 0);
-		clrtobot();
+		wmove(status_win, 0, 0);
+		wclrtobot(status_win);
+		mvwhline(status_win, 0, 0, ACS_HLINE, COLS);
+		wmove(status_win, 1, 0);
+		std::string status_str = filename;
+		if (is_modified)
+		{
+			status_str += "*";
+		}
+		waddstr(status_win, status_str.c_str());
+		wnoutrefresh(status_win);
+
+		wmove(text_win, 0, 0);
+		wclrtobot(text_win);
 
 		std::string screen_content = screen.print();
-
-		int max_x, max_y;
-		getmaxyx(stdscr, max_y, max_x);
+		int max_x = getmaxx(text_win);
+		int max_y = getmaxy(text_win);
 		for (char ch : screen_content)
 		{
 			int x, y;
-			getyx(stdscr, y, x);
+			getyx(text_win, y, x);
 			if (x == max_x - 1 && ch != '\n')
 			{
-				move(y + 1, 0);
+				wmove(text_win, y + 1, 0);
 			}
-			addch(ch);
+			waddch(text_win, ch);
 		}
+
+		wmove(text_win, cursor.get_y(), cursor.get_x());
+		wnoutrefresh(text_win);
+
+		doupdate();
 	}
-
-	// void print_iterator(SCREEN_ITERATOR it)
-	// {
-	// 	int max_x, max_y;
-	// 	getmaxyx(stdscr, max_y, max_x);
-	// 	int x, y;
-	// 	while (!it.is_at_end())
-	// 	{
-	// 		char ch = it.next();
-	// 		addch_wrln(ch);
-	// 	}
-	// }
-
-	// void addch_wrln(char ch)
-	// {
-	// 	int x, y;
-	// 	getyx(stdscr, y, x);
-	// 	if (x == max_x - 1 && ch != '\n')
-	// 	{
-	// 		addch(' ');
-	// 	}
-	// 	getyx(stdscr, y, x);
-	// 	addch(ch);
-	// }
 
 	bool is_append_char(int ch)
 	{
 		if (ch >= 32 && ch <= 126 || ch == '\n' || ch == '\t') return true;
 		return false;
+	}
+
+	void save()
+	{
+		std::ofstream outfile(filename);
+		if (!outfile)
+		{
+			throw std::runtime_error("Failed to open file for saving.");
+		}
+
+		outfile << get_content_string(content);
+		outfile.close();
 	}
 };
 
@@ -176,14 +169,16 @@ int main(int argc, char *argv[])
 
 	initscr();
 	raw();
-	keypad(stdscr, TRUE);
 	noecho();
-	int max_y, max_x;
-	getmaxyx(stdscr, max_y, max_x);
 
-	CSCREEN screen(content, max_y, max_x - 1);
+	WINDOW* text_win = newwin(LINES - 2, COLS, 0, 0);
+	keypad(text_win, TRUE);
+
+	WINDOW* status_win = newwin(2, COLS, LINES - 2, 0);
+
+	CSCREEN screen(content, LINES - 2, COLS - 1);
 	SCREEN_CURSOR cursor(screen);
 
-	CPPAD cppad(screen, cursor);
+	CPPAD cppad(content, screen, cursor, filename, text_win, status_win);
 	cppad.start();
 }
