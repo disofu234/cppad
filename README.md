@@ -41,3 +41,27 @@ Tracking tabs in text calls for a specialized data structure because of the way 
 To quickly modify the `TABS` object when a character is inserted or deleted, `CURSOR` keeps track of the position of the cursor in the `TABS` object as well. This allows for O(1) insertion and deletion of tabs and other characters.
 
 ## `CSCREEN`
+
+`CSCREEN` is the viewport into the content. It is initialized with a `CONTENT` object and the screen dimensions (`rows` and `cols`). It maintains a `FIRST_POSITION` marking the top-left character of the visible area, and exposes a `print()` method that iterates from that position, wrapping at `cols` characters per row and stopping after `rows` rows, producing the string rendered to the terminal via NCurses.
+
+Scrolling is handled by `scroll_up()` and `scroll_down()`, which move `FIRST_POSITION` backward or forward by one screen row. A screen row is `cols` visual columns, so a single long logical line can span many screen rows.
+
+## `POSITION`
+
+`POSITION` is the base class for navigating content. It holds iterators into the `CONTENT` list (`line_it`), the `LINE`'s character list (`char_it`), and the `LINE`'s `TABS` list (`tabs_it`), along with three coordinate values: `chars_x` (raw character offset from line start, where a tab counts as one character), `spaces_x` (visual column, with tabs expanded to their display width), and `tabs_x` (position within the current tab's expansion, from 0 to tab width minus one).
+
+`next()` and `prev()` move one logical character at a time, crossing line boundaries and returning `\n` when doing so. All three coordinates are kept in sync on every move, making coordinate queries O(1).
+
+`FIRST_POSITION` is a subclass of `POSITION` used by `CSCREEN` to represent the top-left of the visible area. It overrides `next()` and `prev()` to expand tabs into individual space characters rather than treating a tab as a single step. It also adds `next_row()` and `prev_row()`, which advance or retreat exactly `cols` visual columns, implementing one-row scrolling.
+
+## `CONTENT_CURSOR`
+
+`CONTENT_CURSOR` extends `POSITION` with editing operations. `insert(ch)` inserts a character at the current position: for regular characters it splices into the `LINE`'s `std::list<char>` and updates the containing tab segment's `prev_chars`; for `\t` it inserts into the `TABS` list; for `\n` it splits the current line, moving all characters from the cursor onward into a new `LINE`. All three cases are O(1) in the character list. `backspace()` is the mirror: it removes the character before the cursor, merging lines when deleting a newline. `left()` and `right()` delegate to `prev()` and `next()` and return the moved character along with its visual width.
+
+## `SCREEN_CURSOR`
+
+`SCREEN_CURSOR` is the top-level cursor exposed to the application. It owns a `CONTENT_CURSOR` for content operations and holds a reference to `CSCREEN` for viewport operations. It tracks the cursor's screen position as `(x, y)` and keeps it consistent with both the content position and the viewport.
+
+`insert()` and `backspace()` delegate to `CONTENT_CURSOR`, then update `(x, y)`, scrolling the viewport when the cursor moves past the bottom or top row.
+
+`right()` and `left()` move one visual position and scroll when the cursor crosses a screen edge. `up()` and `down()` are more involved: since a logical line can wrap across multiple screen rows, there is no direct way to compute the target position arithmetically. Instead, both methods step through content character by character using `right()` or `left()`, tracking the current `y` value, and stop when they enter the target row at a column that matches the original `x` as closely as possible. If the stepping overshoots the target row, it backtracks. This keeps the algorithm simple and correct at the cost of being O(cols) in the common case.
