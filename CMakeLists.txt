@@ -21,8 +21,20 @@ target_link_libraries(test_tabs gtest_main)
 target_include_directories(test_tabs PRIVATE ${CMAKE_SOURCE_DIR}/src)
 gtest_discover_tests(test_tabs)
 
+add_executable(test_chars
+  tests/test_chars.cpp
+  src/chars.cpp
+  src/tabs.cpp
+  src/content.cpp
+  src/position.cpp
+  src/content_cursor.cpp)
+target_link_libraries(test_chars gtest_main)
+target_include_directories(test_chars PRIVATE ${CMAKE_SOURCE_DIR}/src)
+gtest_discover_tests(test_chars)
+
 add_executable(test_content_cursor
   tests/test_content_cursor.cpp
+  src/chars.cpp
   src/tabs.cpp
   src/content.cpp
   src/position.cpp
@@ -33,6 +45,7 @@ gtest_discover_tests(test_content_cursor)
 
 add_executable(test_screen
   tests/test_screen.cpp
+  src/chars.cpp
   src/content.cpp
   src/tabs.cpp
   src/position.cpp
@@ -45,6 +58,7 @@ gtest_discover_tests(test_screen)
 
 add_executable(test_screen_cursor
   tests/test_screen_cursor.cpp
+  src/chars.cpp
   src/content.cpp
   src/tabs.cpp
   src/position.cpp
@@ -58,6 +72,7 @@ gtest_discover_tests(test_screen_cursor)
 
 add_executable(cppad
   src/main.cpp
+  src/chars.cpp
   src/content.cpp
   src/tabs.cpp
   src/position.cpp
