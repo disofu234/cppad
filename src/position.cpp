@@ -119,7 +119,7 @@ char POSITION::next()
     {
         int spaces = line_it->tabs.spaces(tabs_it);
 
-        char_it++;
+        ++char_it;
         tabs_it++;
 
         chars_x++;
@@ -129,7 +129,7 @@ char POSITION::next()
         return '\t';
     }
 
-    char_it++;
+    ++char_it;
 
     chars_x++;
     spaces_x++;
@@ -160,7 +160,7 @@ char POSITION::prev()
 
     if (is_after_tab())
     {
-        char_it--;
+        --char_it;
         tabs_it--;
 
         chars_x--;
@@ -170,7 +170,7 @@ char POSITION::prev()
         return '\t';
     }
 
-    char_it--;
+    --char_it;
 
     chars_x--;
     spaces_x--;
@@ -192,7 +192,7 @@ void POSITION::reset(const POSITION& other)
     {
         int diff = tabs_x - tabs_it->prev_chars;
 
-        char_it++;
+        ++char_it;
         tabs_it++;
 
         chars_x++;

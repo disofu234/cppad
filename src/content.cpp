@@ -1,6 +1,9 @@
 #include "content.h"
 #include "content_cursor.h"
 
+LINE::LINE(std::shared_ptr<std::deque<char>> buf)
+    : chars(std::move(buf)) {}
+
 int LINE::size() const
 {
     return chars.size() - tabs.tab_count() + tabs.spaces();

@@ -29,7 +29,7 @@ INSERT CONTENT_CURSOR::insert(char ch)
         tabs_x++;
     }
 
-    line_it->chars.insert(char_it, ch);
+    char_it = line_it->chars.insert(char_it, ch);
     chars_x++;
     spaces_x += result.width;
     return result;
@@ -72,7 +72,7 @@ BACKSPACE CONTENT_CURSOR::backspace()
 
     CHAR_IT prev_char_it = std::prev(char_it);
     result.ch = *prev_char_it;
-    line_it->chars.erase(prev_char_it);
+    char_it = line_it->chars.erase(prev_char_it);
     chars_x--;
     spaces_x -= result.width;
     return result;
@@ -122,7 +122,7 @@ RIGHT CONTENT_CURSOR::right()
 
 void CONTENT_CURSOR::insert_line()
 {
-    LINE_IT new_line_it = content.insert(std::next(line_it), LINE());
+    LINE_IT new_line_it = content.insert(std::next(line_it), LINE(line_it->chars.get_buffer()));
 
     CONTENT_CURSOR insert_cursor(content, new_line_it);
     while (!is_at_line_end())
