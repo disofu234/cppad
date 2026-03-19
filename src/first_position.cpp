@@ -54,7 +54,7 @@ char FIRST_POSITION::next()
     tabs_x++;
     if (tabs_x > max_tabs_x())
     {
-        char_it++;
+        ++char_it;
         tabs_it++;
 
         chars_x++;
@@ -75,7 +75,7 @@ char FIRST_POSITION::prev()
     {
         char ch = get_char();
 
-        char_it--;
+        --char_it;
         tabs_it--;
 
         chars_x--;
@@ -89,7 +89,7 @@ char FIRST_POSITION::prev()
     tabs_x--;
     if (tabs_x < tabs_it->prev_chars)
     {
-        char_it--;
+        --char_it;
         chars_x--;
     }
 

@@ -37,13 +37,6 @@ CHARS::iterator& CHARS::iterator::operator++()
 	return *this;
 }
 
-CHARS::iterator CHARS::iterator::operator++(int)
-{
-	iterator tmp = *this;
-	++(*this);
-	return tmp;
-}
-
 CHARS::iterator& CHARS::iterator::operator--()
 {
 	if (node_it == nodes_ptr->end())
@@ -62,13 +55,6 @@ CHARS::iterator& CHARS::iterator::operator--()
 
 	char_ptr--;
 	return *this;
-}
-
-CHARS::iterator CHARS::iterator::operator--(int)
-{
-	iterator tmp = *this;
-	--(*this);
-	return tmp;
 }
 
 bool CHARS::iterator::operator==(const iterator& other) const
