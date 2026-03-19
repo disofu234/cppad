@@ -84,3 +84,9 @@ add_executable(cppad
 find_package(Curses REQUIRED)
 include_directories(${CURSES_INCLUDE_DIR})
 target_link_libraries(cppad ${CURSES_LIBRARIES})
+
+add_executable(bench
+  bench/bench.cpp
+  src/chars.cpp)
+target_include_directories(bench PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_compile_options(bench PRIVATE -O2)
