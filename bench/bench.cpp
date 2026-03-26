@@ -7,6 +7,9 @@
 #include <cmath>
 #include <algorithm>
 #include "chars.h"
+#include "list_chars.h"
+#include "content.h"
+#include "content_cursor.h"
 
 enum class OP { INSERT };
 
@@ -46,47 +49,23 @@ DOCUMENT_COMMANDS generate_commands(int total_chars, int avg_chars_per_line, std
 	return doc;
 }
 
-double bench_piece_table(const DOCUMENT_COMMANDS& doc)
+template<typename CHARS_T>
+double bench_insert(const DOCUMENT_COMMANDS& doc)
 {
 	auto start = std::chrono::high_resolution_clock::now();
 
-	std::list<CHARS> content;
-	content.push_back(CHARS());
-	auto shared_buf = content.front().get_buffer();
+	CONTENT_T<CHARS_T> content;
+	content.push_back(LINE_T<CHARS_T>());
+	CONTENT_CURSOR_T<CHARS_T> cursor(content);
 
-	for (size_t i = 0; i < doc.size(); i++)
+	for (const auto& line : doc)
 	{
-		CHARS& line = content.back();
-		for (const COMMAND& cmd : doc[i])
+		for (const COMMAND& cmd : line)
 		{
 			if (cmd.op == OP::INSERT)
-				line.insert(line.end(), cmd.ch);
+				cursor.insert(cmd.ch);
 		}
-		if (i + 1 < doc.size())
-			content.push_back(CHARS(shared_buf));
-	}
-
-	auto end = std::chrono::high_resolution_clock::now();
-	return std::chrono::duration<double, std::milli>(end - start).count();
-}
-
-double bench_linked_list(const DOCUMENT_COMMANDS& doc)
-{
-	auto start = std::chrono::high_resolution_clock::now();
-
-	std::list<std::list<char>> content;
-	content.push_back({});
-
-	for (size_t i = 0; i < doc.size(); i++)
-	{
-		std::list<char>& line = content.back();
-		for (const COMMAND& cmd : doc[i])
-		{
-			if (cmd.op == OP::INSERT)
-				line.push_back(cmd.ch);
-		}
-		if (i + 1 < doc.size())
-			content.push_back({});
+		cursor.insert('\n');
 	}
 
 	auto end = std::chrono::high_resolution_clock::now();
@@ -114,8 +93,8 @@ int main()
 			{
 				DOCUMENT_COMMANDS doc = generate_commands(total_chars, avg_line_len, rng);
 
-				double pt_ms = bench_piece_table(doc);
-				double ll_ms = bench_linked_list(doc);
+				double pt_ms = bench_insert<CHARS>(doc);
+				double ll_ms = bench_insert<LIST_CHARS>(doc);
 
 				pt_total += pt_ms;
 				ll_total += ll_ms;

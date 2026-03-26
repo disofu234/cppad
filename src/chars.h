@@ -62,6 +62,7 @@ public:
 	size_t size() const;
 	bool empty() const;
 
+	CHARS create_sibling() const;
 	std::shared_ptr<std::deque<char>> get_buffer() const;
 
 private:
