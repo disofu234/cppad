@@ -1,10 +1,17 @@
 #include "content_cursor.h"
+#include "list_chars.h"
 
-CONTENT_CURSOR::CONTENT_CURSOR(CONTENT& content) : POSITION(content) {}
-CONTENT_CURSOR::CONTENT_CURSOR(CONTENT& content, LINE_IT line_it, int chars_x)
-    : POSITION(content, line_it, chars_x) {}
+template<typename CHARS_T>
+CONTENT_CURSOR_T<CHARS_T>::CONTENT_CURSOR_T(CONTENT_T<CHARS_T>& content)
+    : POSITION_T<CHARS_T>(content) {}
 
-INSERT CONTENT_CURSOR::insert(char ch)
+template<typename CHARS_T>
+CONTENT_CURSOR_T<CHARS_T>::CONTENT_CURSOR_T(CONTENT_T<CHARS_T>& content,
+    typename CONTENT_T<CHARS_T>::iterator line_it, int chars_x)
+    : POSITION_T<CHARS_T>(content, line_it, chars_x) {}
+
+template<typename CHARS_T>
+INSERT CONTENT_CURSOR_T<CHARS_T>::insert(char ch)
 {
     INSERT result{};
 
@@ -15,38 +22,39 @@ INSERT CONTENT_CURSOR::insert(char ch)
         return result;
     }
 
-    if (ch  == '\t')
+    if (ch == '\t')
     {
-        line_it->tabs.insert(tabs_it, tabs_x);
-        result.width = line_it->tabs.spaces(tabs_it);
-        tabs_x = 0;
-        tabs_it++;
+        this->line_it->tabs.insert(this->tabs_it, this->tabs_x);
+        result.width = this->line_it->tabs.spaces(this->tabs_it);
+        this->tabs_x = 0;
+        this->tabs_it++;
     }
     else
     {
         result.width = 1;
-        line_it->tabs.add_prev_chars(tabs_it, 1);
-        tabs_x++;
+        this->line_it->tabs.add_prev_chars(this->tabs_it, 1);
+        this->tabs_x++;
     }
 
-    char_it = line_it->chars.insert(char_it, ch);
-    chars_x++;
-    spaces_x += result.width;
+    this->char_it = this->line_it->chars.insert(this->char_it, ch);
+    this->chars_x++;
+    this->spaces_x += result.width;
     return result;
 }
 
-BACKSPACE CONTENT_CURSOR::backspace()
+template<typename CHARS_T>
+BACKSPACE CONTENT_CURSOR_T<CHARS_T>::backspace()
 {
     BACKSPACE result{};
 
-    if (is_at_contents_start())
+    if (this->is_at_contents_start())
     {
         result.ch = '\0';
         result.width = 0;
         return result;
     }
 
-    if (is_at_line_start())
+    if (this->is_at_line_start())
     {
         result.ch = '\n';
         result.width = 0;
@@ -54,44 +62,43 @@ BACKSPACE CONTENT_CURSOR::backspace()
         return result;
     }
 
-    if (is_after_tab())
+    if (this->is_after_tab())
     {
-        TABS_IT prev_tabs_it = std::prev(tabs_it);
-        result.width = line_it->tabs.spaces(prev_tabs_it);
+        TABS_IT prev_tabs_it = std::prev(this->tabs_it);
+        result.width = this->line_it->tabs.spaces(prev_tabs_it);
         int saved_tabs_x = prev_tabs_it->prev_chars;
-        line_it->tabs.remove(tabs_it);
-        tabs_it = prev_tabs_it;
-        tabs_x = saved_tabs_x;
+        this->line_it->tabs.remove(this->tabs_it);
+        this->tabs_it = prev_tabs_it;
+        this->tabs_x = saved_tabs_x;
     }
     else
     {
         result.width = 1;
-        line_it->tabs.add_prev_chars(tabs_it, -1);
-        tabs_x--;
+        this->line_it->tabs.add_prev_chars(this->tabs_it, -1);
+        this->tabs_x--;
     }
 
-    CHAR_IT prev_char_it = std::prev(char_it);
+    auto prev_char_it = std::prev(this->char_it);
     result.ch = *prev_char_it;
-    char_it = line_it->chars.erase(prev_char_it);
-    chars_x--;
-    spaces_x -= result.width;
+    this->char_it = this->line_it->chars.erase(prev_char_it);
+    this->chars_x--;
+    this->spaces_x -= result.width;
     return result;
 }
 
-LEFT CONTENT_CURSOR::left()
+template<typename CHARS_T>
+LEFT CONTENT_CURSOR_T<CHARS_T>::left()
 {
     LEFT result{};
-    result.ch = prev();
+    result.ch = this->prev();
     result.width = 0;
 
     if (result.ch == '\0' || result.ch == '\n')
-    {
         return result;
-    }
 
-    if (is_tab())
+    if (this->is_tab())
     {
-        result.width = line_it->tabs.spaces(tabs_it);
+        result.width = this->line_it->tabs.spaces(this->tabs_it);
         return result;
     }
 
@@ -99,20 +106,19 @@ LEFT CONTENT_CURSOR::left()
     return result;
 }
 
-RIGHT CONTENT_CURSOR::right()
+template<typename CHARS_T>
+RIGHT CONTENT_CURSOR_T<CHARS_T>::right()
 {
     RIGHT result{};
-    result.ch = next();
+    result.ch = this->next();
     result.width = 0;
 
     if (result.ch == '\0' || result.ch == '\n')
-    {
         return result;
-    }
 
-    if (is_after_tab())
+    if (this->is_after_tab())
     {
-        result.width = line_it->tabs.spaces(std::prev(tabs_it));
+        result.width = this->line_it->tabs.spaces(std::prev(this->tabs_it));
         return result;
     }
 
@@ -120,54 +126,58 @@ RIGHT CONTENT_CURSOR::right()
     return result;
 }
 
-void CONTENT_CURSOR::insert_line()
+template<typename CHARS_T>
+void CONTENT_CURSOR_T<CHARS_T>::insert_line()
 {
-    LINE_IT new_line_it = content.insert(std::next(line_it), LINE(line_it->chars.get_buffer()));
+    auto new_line_it = this->content.insert(
+        std::next(this->line_it),
+        LINE_T<CHARS_T>(this->line_it->chars.create_sibling()));
 
-    CONTENT_CURSOR insert_cursor(content, new_line_it);
-    while (!is_at_line_end())
+    CONTENT_CURSOR_T<CHARS_T> insert_cursor(this->content, new_line_it);
+    while (!this->is_at_line_end())
     {
         right();
         BACKSPACE removed = backspace();
-        char ch = removed.ch;
-        insert_cursor.insert(ch);
+        insert_cursor.insert(removed.ch);
     }
 
-    line_it = new_line_it;
-    char_it = new_line_it->chars.begin();
-    tabs_it = new_line_it->tabs.begin();
+    this->line_it = new_line_it;
+    this->char_it = new_line_it->chars.begin();
+    this->tabs_it = new_line_it->tabs.begin();
 
-    chars_x = 0;
-    spaces_x = 0;
-    tabs_x = 0;
+    this->chars_x = 0;
+    this->spaces_x = 0;
+    this->tabs_x = 0;
 }
 
-void CONTENT_CURSOR::backspace_line()
+template<typename CHARS_T>
+void CONTENT_CURSOR_T<CHARS_T>::backspace_line()
 {
-    LINE_IT prev_line_it = std::prev(line_it);
+    auto prev_line_it = std::prev(this->line_it);
     if (prev_line_it->chars.empty())
     {
-        content.erase(prev_line_it);
+        this->content.erase(prev_line_it);
         return;
     }
 
-    CONTENT_CURSOR insert_cursor(content, prev_line_it, prev_line_it->chars.size());
-    
-    // Save the position where we want to end up after the operation
-    POSITION saved_position = insert_cursor;
+    CONTENT_CURSOR_T<CHARS_T> insert_cursor(
+        this->content, prev_line_it, (int)prev_line_it->chars.size());
+
+    POSITION_T<CHARS_T> saved_position = insert_cursor;
     saved_position.prev();
 
-    while (!is_at_line_end())
+    while (!this->is_at_line_end())
     {
         right();
         BACKSPACE removed = backspace();
-        char ch = removed.ch;
-        insert_cursor.insert(ch);
+        insert_cursor.insert(removed.ch);
     }
 
-    content.erase(line_it);
-    
-    // Set cursor to the saved position
+    this->content.erase(this->line_it);
+
     saved_position.next();
-    reset(saved_position);
+    this->reset(saved_position);
 }
+
+template class CONTENT_CURSOR_T<CHARS>;
+template class CONTENT_CURSOR_T<LIST_CHARS>;

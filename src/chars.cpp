@@ -194,6 +194,11 @@ bool CHARS::empty() const
 	return char_count == 0;
 }
 
+CHARS CHARS::create_sibling() const
+{
+	return CHARS(buffer);
+}
+
 std::shared_ptr<std::deque<char>> CHARS::get_buffer() const
 {
 	return buffer;

@@ -5,16 +5,18 @@
 #ifndef POSITION_H
 #define POSITION_H
 
-class POSITION
+template<typename CHARS_T>
+class POSITION_T
 {
 public:
-	POSITION(CONTENT& content);
-	POSITION(CONTENT& content, LINE_IT line_it, int chars_x = 0);
-	POSITION(const POSITION& other);
+	POSITION_T(CONTENT_T<CHARS_T>& content);
+	POSITION_T(CONTENT_T<CHARS_T>& content,
+		typename CONTENT_T<CHARS_T>::iterator line_it, int chars_x = 0);
+	POSITION_T(const POSITION_T<CHARS_T>& other);
 
-	CONTENT& content;
-	LINE_IT line_it;
-	CHAR_IT char_it;
+	CONTENT_T<CHARS_T>& content;
+	typename CONTENT_T<CHARS_T>::iterator line_it;
+	typename CHARS_T::iterator char_it;
 	TABS_IT tabs_it;
 
 	int chars_x;
@@ -37,10 +39,13 @@ public:
 	virtual char next();
 	virtual char prev();
 
-	void reset(const POSITION& other);
+	void reset(const POSITION_T<CHARS_T>& other);
 
-	bool operator==(const POSITION& other) const;
-	bool operator!=(const POSITION& other) const;
+	bool operator==(const POSITION_T<CHARS_T>& other) const;
+	bool operator!=(const POSITION_T<CHARS_T>& other) const;
 };
+
+// Backward-compatible alias
+using POSITION = POSITION_T<CHARS>;
 
 #endif

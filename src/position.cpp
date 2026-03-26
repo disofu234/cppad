@@ -1,7 +1,9 @@
 #include "position.h"
+#include "list_chars.h"
 #include "screen.h"
 
-POSITION::POSITION(CONTENT& content) :
+template<typename CHARS_T>
+POSITION_T<CHARS_T>::POSITION_T(CONTENT_T<CHARS_T>& content) :
     content(content),
     char_it(content.front().chars.begin()),
     line_it(content.begin()),
@@ -10,7 +12,9 @@ POSITION::POSITION(CONTENT& content) :
     spaces_x(0),
     tabs_x(0) {}
 
-POSITION::POSITION(CONTENT& content, LINE_IT line_iterator, int x) :
+template<typename CHARS_T>
+POSITION_T<CHARS_T>::POSITION_T(CONTENT_T<CHARS_T>& content,
+    typename CONTENT_T<CHARS_T>::iterator line_iterator, int x) :
     content(content),
     char_it(line_iterator->chars.begin()),
     line_it(line_iterator),
@@ -20,22 +24,18 @@ POSITION::POSITION(CONTENT& content, LINE_IT line_iterator, int x) :
     tabs_x(0)
 {
     if (x < 0)
-    {
         throw std::out_of_range("x is out of bounds");
-    }
 
     for (int i = 0; i < x; i++)
     {
         if (is_at_line_end())
-        {
             throw std::out_of_range("x is out of bounds");
-        }
-
         next();
     }
 }
 
-POSITION::POSITION(const POSITION& other) :
+template<typename CHARS_T>
+POSITION_T<CHARS_T>::POSITION_T(const POSITION_T<CHARS_T>& other) :
     content(other.content),
     char_it(other.char_it),
     line_it(other.line_it),
@@ -44,62 +44,67 @@ POSITION::POSITION(const POSITION& other) :
     spaces_x(other.spaces_x),
     tabs_x(other.tabs_x) {}
 
-bool POSITION::is_first_line() const
+template<typename CHARS_T>
+bool POSITION_T<CHARS_T>::is_first_line() const
 {
     return line_it == content.begin();
 }
 
-bool POSITION::is_at_line_start() const
+template<typename CHARS_T>
+bool POSITION_T<CHARS_T>::is_at_line_start() const
 {
     return chars_x == 0;
 }
 
-bool POSITION::is_at_contents_start() const
+template<typename CHARS_T>
+bool POSITION_T<CHARS_T>::is_at_contents_start() const
 {
     return is_first_line() && is_at_line_start();
 }
 
-bool POSITION::is_last_line() const
+template<typename CHARS_T>
+bool POSITION_T<CHARS_T>::is_last_line() const
 {
     return line_it == std::prev(content.end());
 }
 
-bool POSITION::is_at_line_end() const
+template<typename CHARS_T>
+bool POSITION_T<CHARS_T>::is_at_line_end() const
 {
     return char_it == line_it->chars.end();
 }
 
-bool POSITION::is_at_contents_end() const
+template<typename CHARS_T>
+bool POSITION_T<CHARS_T>::is_at_contents_end() const
 {
     return is_last_line() && is_at_line_end();
 }
 
-bool POSITION::is_tab() const
+template<typename CHARS_T>
+bool POSITION_T<CHARS_T>::is_tab() const
 {
     return get_char() == '\t';
 }
 
-bool POSITION::is_after_tab() const
+template<typename CHARS_T>
+bool POSITION_T<CHARS_T>::is_after_tab() const
 {
     return !is_at_line_start() && tabs_x == 0;
 }
 
-char POSITION::get_char() const
+template<typename CHARS_T>
+char POSITION_T<CHARS_T>::get_char() const
 {
     if (is_at_line_end())
-    {
         return '\0';
-    }
-
     return *char_it;
 }
 
-char POSITION::next()
+template<typename CHARS_T>
+char POSITION_T<CHARS_T>::next()
 {
     if (is_at_contents_end())
-    {
         return '\0';
-    }
 
     if (is_at_line_end())
     {
@@ -138,12 +143,11 @@ char POSITION::next()
     return ch;
 }
 
-char POSITION::prev()
+template<typename CHARS_T>
+char POSITION_T<CHARS_T>::prev()
 {
     if (is_at_contents_start())
-    {
         return '\0';
-    }
 
     if (is_at_line_start())
     {
@@ -151,7 +155,7 @@ char POSITION::prev()
         char_it = line_it->chars.end();
         tabs_it = std::prev(line_it->tabs.end());
 
-        chars_x = line_it->chars.size();
+        chars_x = (int)line_it->chars.size();
         spaces_x = line_it->size();
         tabs_x = tabs_it->prev_chars;
 
@@ -179,7 +183,8 @@ char POSITION::prev()
     return get_char();
 }
 
-void POSITION::reset(const POSITION& other)
+template<typename CHARS_T>
+void POSITION_T<CHARS_T>::reset(const POSITION_T<CHARS_T>& other)
 {
     line_it = other.line_it;
     char_it = other.char_it;
@@ -201,12 +206,17 @@ void POSITION::reset(const POSITION& other)
     }
 }
 
-bool POSITION::operator==(const POSITION& other) const
+template<typename CHARS_T>
+bool POSITION_T<CHARS_T>::operator==(const POSITION_T<CHARS_T>& other) const
 {
     return char_it == other.char_it;
 }
 
-bool POSITION::operator!=(const POSITION& other) const
+template<typename CHARS_T>
+bool POSITION_T<CHARS_T>::operator!=(const POSITION_T<CHARS_T>& other) const
 {
     return !(*this == other);
 }
+
+template class POSITION_T<CHARS>;
+template class POSITION_T<LIST_CHARS>;
