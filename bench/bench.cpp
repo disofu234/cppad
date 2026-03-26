@@ -74,9 +74,9 @@ double bench_insert(const DOCUMENT_COMMANDS& doc)
 
 int main()
 {
-	const std::vector<int> total_chars_list  = {100, 1000, 10000, 100000};
+	const std::vector<int> total_chars_list  = {1000, 10000, 100000, 1000000, 10000000};
 	const std::vector<int> avg_line_len_list = {10, 100, 1000, 10000};
-	const int runs = 3;
+	const int runs = 10;
 
 	std::ofstream out("bench_results.csv");
 	out << "total_chars,avg_chars_per_line,run,piece_table_ms,linked_list_ms,speedup\n";
@@ -87,6 +87,9 @@ int main()
 	{
 		for (int avg_line_len : avg_line_len_list)
 		{
+			if (avg_line_len > total_chars)
+				continue;
+
 			double pt_total = 0, ll_total = 0;
 
 			for (int run = 1; run <= runs; run++)
