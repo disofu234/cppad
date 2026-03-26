@@ -49,4 +49,6 @@ private:
 // Backward-compatible alias
 using CONTENT_CURSOR = CONTENT_CURSOR_T<CHARS>;
 
+#include "content_cursor.tpp"
+
 #endif

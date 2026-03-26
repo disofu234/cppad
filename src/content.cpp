@@ -1,5 +1,4 @@
 #include "content.h"
-#include "list_chars.h"
 #include "content_cursor.h"
 
 template<typename CHARS_T>
@@ -26,6 +25,4 @@ std::string get_content_string(CONTENT_T<CHARS_T>& content)
 }
 
 template void initialize_content<CHARS>(CONTENT_T<CHARS>&, std::istream&);
-template void initialize_content<LIST_CHARS>(CONTENT_T<LIST_CHARS>&, std::istream&);
 template std::string get_content_string<CHARS>(CONTENT_T<CHARS>&);
-template std::string get_content_string<LIST_CHARS>(CONTENT_T<LIST_CHARS>&);

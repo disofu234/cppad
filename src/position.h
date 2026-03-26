@@ -48,4 +48,6 @@ public:
 // Backward-compatible alias
 using POSITION = POSITION_T<CHARS>;
 
+#include "position.tpp"
+
 #endif
