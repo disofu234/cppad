@@ -8,6 +8,7 @@
 #include <algorithm>
 #include "chars.h"
 #include "list_chars.h"
+#include "vector_chars.h"
 #include "content.h"
 #include "content_cursor.h"
 
@@ -79,7 +80,7 @@ int main()
 	const int runs = 10;
 
 	std::ofstream out("bench_results.csv");
-	out << "total_chars,avg_chars_per_line,run,piece_table_ms,linked_list_ms,speedup\n";
+	out << "total_chars,avg_chars_per_line,run,piece_table_ms,linked_list_ms,vector_ms,ll_speedup,vec_speedup\n";
 
 	std::mt19937 rng(42);
 
@@ -90,39 +91,49 @@ int main()
 			if (avg_line_len > total_chars)
 				continue;
 
-			double pt_total = 0, ll_total = 0;
+			double pt_total = 0, ll_total = 0, vec_total = 0;
 
 			for (int run = 1; run <= runs; run++)
 			{
 				DOCUMENT_COMMANDS doc = generate_commands(total_chars, avg_line_len, rng);
 
-				double pt_ms = bench_insert<CHARS>(doc);
-				double ll_ms = bench_insert<LIST_CHARS>(doc);
+				double pt_ms  = bench_insert<CHARS>(doc);
+				double ll_ms  = bench_insert<LIST_CHARS>(doc);
+				double vec_ms = bench_insert<VECTOR_CHARS>(doc);
 
-				pt_total += pt_ms;
-				ll_total += ll_ms;
+				pt_total  += pt_ms;
+				ll_total  += ll_ms;
+				vec_total += vec_ms;
 
-				double speedup = ll_ms / pt_ms;
+				double ll_speedup  = ll_ms / pt_ms;
+				double vec_speedup = vec_ms / pt_ms;
 				out << total_chars << "," << avg_line_len << "," << run << ","
-				    << pt_ms << "," << ll_ms << "," << speedup << "\n";
+				    << pt_ms << "," << ll_ms << "," << vec_ms << ","
+				    << ll_speedup << "," << vec_speedup << "\n";
 
 				std::cout << "total=" << total_chars
 				          << " avg_line=" << avg_line_len
 				          << " run=" << run
 				          << "  piece_table=" << pt_ms << "ms"
 				          << "  linked_list=" << ll_ms << "ms"
-				          << "  speedup=" << speedup << "x\n";
+				          << "  vector=" << vec_ms << "ms"
+				          << "  ll_speedup=" << ll_speedup << "x"
+				          << "  vec_speedup=" << vec_speedup << "x\n";
 			}
 
-			double pt_avg = pt_total / runs;
-			double ll_avg = ll_total / runs;
+			double pt_avg  = pt_total / runs;
+			double ll_avg  = ll_total / runs;
+			double vec_avg = vec_total / runs;
 
 			out << total_chars << "," << avg_line_len << ",avg,"
-			    << pt_avg << "," << ll_avg << "," << ll_avg / pt_avg << "\n";
+			    << pt_avg << "," << ll_avg << "," << vec_avg << ","
+			    << ll_avg / pt_avg << "," << vec_avg / pt_avg << "\n";
 
 			std::cout << "=> avg  piece_table=" << pt_avg << "ms"
 			          << "  linked_list=" << ll_avg << "ms"
-			          << "  speedup=" << ll_avg / pt_avg << "x\n\n";
+			          << "  vector=" << vec_avg << "ms"
+			          << "  ll_speedup=" << ll_avg / pt_avg << "x"
+			          << "  vec_speedup=" << vec_avg / pt_avg << "x\n\n";
 		}
 	}
 
