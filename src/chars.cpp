@@ -2,23 +2,20 @@
 
 // --- iterator ---
 
-CHARS::iterator::iterator()
-	: node_it(), char_offset(0), nodes_ptr(nullptr), buffer(nullptr) {}
-
 CHARS::iterator::iterator(std::list<BUFFER_NODE>::iterator node_it,
 	size_t char_offset, std::list<BUFFER_NODE>* nodes_ptr,
-	std::shared_ptr<std::vector<char>> buffer)
+	const std::vector<char>& buffer)
 	: node_it(node_it), char_offset(char_offset), nodes_ptr(nodes_ptr),
-	  buffer(std::move(buffer)) {}
+	  buffer(buffer) {}
 
 CHARS::iterator::reference CHARS::iterator::operator*() const
 {
-	return (*buffer)[node_it->offset + char_offset];
+	return buffer.get()[node_it->offset + char_offset];
 }
 
 CHARS::iterator::pointer CHARS::iterator::operator->() const
 {
-	return &(*buffer)[node_it->offset + char_offset];
+	return &buffer.get()[node_it->offset + char_offset];
 }
 
 CHARS::iterator& CHARS::iterator::operator++()
@@ -119,7 +116,7 @@ CHARS::iterator CHARS::erase(iterator pos)
 		auto next_node = nodes.erase(pos.node_it);
 		if (next_node != nodes.end())
 		{
-			return iterator(next_node, 0, &nodes, buffer);
+			return iterator(next_node, 0, &nodes, *buffer);
 		}
 		return end();
 	}
@@ -130,7 +127,7 @@ CHARS::iterator CHARS::erase(iterator pos)
 		auto next_node = std::next(pos.node_it);
 		if (next_node != nodes.end())
 		{
-			return iterator(next_node, 0, &nodes, buffer);
+			return iterator(next_node, 0, &nodes, *buffer);
 		}
 		return end();
 	}
@@ -139,7 +136,7 @@ CHARS::iterator CHARS::erase(iterator pos)
 	{
 		pos.node_it->offset++;
 		pos.node_it->len--;
-		return iterator(pos.node_it, 0, &nodes, buffer);
+		return iterator(pos.node_it, 0, &nodes, *buffer);
 	}
 
 	// Middle — split
@@ -147,7 +144,7 @@ CHARS::iterator CHARS::erase(iterator pos)
 		BUFFER_NODE{pos.node_it->offset + offset + 1, pos.node_it->len - offset - 1});
 	pos.node_it->len = offset;
 
-	return iterator(second_half_it, 0, &nodes, buffer);
+	return iterator(second_half_it, 0, &nodes, *buffer);
 }
 
 CHARS::iterator CHARS::begin()
@@ -156,12 +153,12 @@ CHARS::iterator CHARS::begin()
 	{
 		return end();
 	}
-	return iterator(nodes.begin(), 0, &nodes, buffer);
+	return iterator(nodes.begin(), 0, &nodes, *buffer);
 }
 
 CHARS::iterator CHARS::end()
 {
-	return iterator(nodes.end(), 0, &nodes, buffer);
+	return iterator(nodes.end(), 0, &nodes, *buffer);
 }
 
 CHARS::const_iterator CHARS::begin() const
@@ -169,18 +166,15 @@ CHARS::const_iterator CHARS::begin() const
 	auto& mutable_nodes = const_cast<std::list<BUFFER_NODE>&>(nodes);
 	if (mutable_nodes.empty())
 	{
-		return const_iterator(mutable_nodes.end(), 0, &mutable_nodes,
-			std::const_pointer_cast<std::vector<char>>(buffer));
+		return const_iterator(mutable_nodes.end(), 0, &mutable_nodes, *buffer);
 	}
-	return const_iterator(mutable_nodes.begin(), 0, &mutable_nodes,
-		std::const_pointer_cast<std::vector<char>>(buffer));
+	return const_iterator(mutable_nodes.begin(), 0, &mutable_nodes, *buffer);
 }
 
 CHARS::const_iterator CHARS::end() const
 {
 	auto& mutable_nodes = const_cast<std::list<BUFFER_NODE>&>(nodes);
-	return const_iterator(mutable_nodes.end(), 0, &mutable_nodes,
-		std::const_pointer_cast<std::vector<char>>(buffer));
+	return const_iterator(mutable_nodes.end(), 0, &mutable_nodes, *buffer);
 }
 
 size_t CHARS::size() const
