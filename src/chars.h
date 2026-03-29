@@ -1,7 +1,7 @@
 #ifndef CHARS_H
 #define CHARS_H
 
-#include <deque>
+#include <vector>
 #include <list>
 #include <memory>
 #include <iterator>
@@ -9,7 +9,7 @@
 
 struct BUFFER_NODE
 {
-	const char* ptr;
+	size_t offset;
 	size_t len;
 };
 
@@ -26,8 +26,8 @@ public:
 		using reference = const char&;
 
 		iterator();
-		iterator(std::list<BUFFER_NODE>::iterator node_it, const char* char_ptr,
-			std::list<BUFFER_NODE>* nodes_ptr);
+		iterator(std::list<BUFFER_NODE>::iterator node_it, size_t char_offset,
+			std::list<BUFFER_NODE>* nodes_ptr, std::shared_ptr<std::vector<char>> buffer);
 
 		reference operator*() const;
 		pointer operator->() const;
@@ -40,8 +40,9 @@ public:
 
 	private:
 		std::list<BUFFER_NODE>::iterator node_it;
-		const char* char_ptr;
+		size_t char_offset;
 		std::list<BUFFER_NODE>* nodes_ptr;
+		std::shared_ptr<std::vector<char>> buffer;
 
 		friend class CHARS;
 	};
@@ -49,7 +50,7 @@ public:
 	using const_iterator = iterator;
 
 	CHARS();
-	CHARS(std::shared_ptr<std::deque<char>> buf);
+	CHARS(std::shared_ptr<std::vector<char>> buf);
 
 	iterator insert(iterator pos, char ch);
 	iterator erase(iterator pos);
@@ -63,10 +64,10 @@ public:
 	bool empty() const;
 
 	CHARS create_sibling() const;
-	std::shared_ptr<std::deque<char>> get_buffer() const;
+	std::shared_ptr<std::vector<char>> get_buffer() const;
 
 private:
-	std::shared_ptr<std::deque<char>> buffer;
+	std::shared_ptr<std::vector<char>> buffer;
 	std::list<BUFFER_NODE> nodes;
 	size_t char_count;
 };
