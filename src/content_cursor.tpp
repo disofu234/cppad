@@ -75,9 +75,8 @@ BACKSPACE CONTENT_CURSOR_T<CHARS_T>::backspace()
         this->tabs_x--;
     }
 
-    auto prev_char_it = std::prev(this->char_it);
-    result.ch = *prev_char_it;
-    this->line_it->chars.erase(prev_char_it, this->char_it);
+    result.ch = *std::prev(this->char_it);
+    this->line_it->chars.erase(this->char_it);
     this->chars_x--;
     this->spaces_x -= result.width;
     return result;

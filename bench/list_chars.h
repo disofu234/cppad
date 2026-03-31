@@ -16,10 +16,9 @@ public:
 		chars.insert(pos, ch);
 	}
 
-	void erase(const iterator& pos, iterator& next)
+	void erase(iterator& next)
 	{
-		(void)next;
-		chars.erase(pos);
+		chars.erase(std::prev(next));
 	}
 
 	iterator begin() { return chars.begin(); }

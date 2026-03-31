@@ -109,40 +109,43 @@ void CHARS::insert(iterator& pos, char ch)
 	pos.node_it = second_half_it;
 }
 
-void CHARS::erase(const iterator& pos, iterator& next)
+void CHARS::erase(iterator& next)
 {
 	char_count--;
-	size_t offset_in_node = pos.buffer_index - pos.node_it->offset;
+	auto prev = next;
+	--prev;
 
-	if (pos.node_it->len == 1)
+	size_t offset_in_node = prev.buffer_index - prev.node_it->offset;
+
+	if (prev.node_it->len == 1)
 	{
-		nodes.erase(pos.node_it);
+		nodes.erase(prev.node_it);
 		return;
 	}
 
-	if (offset_in_node == pos.node_it->len - 1)
+	if (offset_in_node == prev.node_it->len - 1)
 	{
-		pos.node_it->len--;
+		prev.node_it->len--;
 		return;
 	}
 
 	if (offset_in_node == 0)
 	{
-		pos.node_it->offset++;
-		pos.node_it->len--;
+		prev.node_it->offset++;
+		prev.node_it->len--;
 		return;
 	}
 
 	// Middle — split
 	// Current node becomes first half, insert second half after
-	size_t original_len = pos.node_it->len;
+	size_t original_len = prev.node_it->len;
 
-	pos.node_it->len = offset_in_node;
+	prev.node_it->len = offset_in_node;
 
-	auto second_half_it = nodes.insert(std::next(pos.node_it),
-		BUFFER_NODE{pos.buffer_index + 1, original_len - offset_in_node - 1});
+	auto second_half_it = nodes.insert(std::next(prev.node_it),
+		BUFFER_NODE{prev.buffer_index + 1, original_len - offset_in_node - 1});
 
-	if (next.node_it == pos.node_it)
+	if (next.node_it == prev.node_it)
 		next.node_it = second_half_it;
 }
 

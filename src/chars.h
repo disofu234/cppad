@@ -52,7 +52,7 @@ public:
 	CHARS(std::shared_ptr<std::vector<char>> buf);
 
 	void insert(iterator& pos, char ch);
-	void erase(const iterator& pos, iterator& next);
+	void erase(iterator& next);
 
 	iterator begin();
 	iterator end();
