@@ -5,7 +5,6 @@
 #include <list>
 #include <memory>
 #include <iterator>
-#include <functional>
 #include <cstddef>
 
 struct BUFFER_NODE
@@ -27,7 +26,7 @@ public:
 		using reference = const char&;
 
 		iterator(std::list<BUFFER_NODE>::iterator node_it, size_t char_offset,
-			std::list<BUFFER_NODE>* nodes_ptr, const std::vector<char>& buffer);
+			std::list<BUFFER_NODE>* nodes_ptr, const std::vector<char>* buffer);
 
 		reference operator*() const;
 		pointer operator->() const;
@@ -42,7 +41,7 @@ public:
 		std::list<BUFFER_NODE>::iterator node_it;
 		size_t char_offset;
 		std::list<BUFFER_NODE>* nodes_ptr;
-		std::reference_wrapper<const std::vector<char>> buffer;
+		const std::vector<char>* buffer;
 
 		friend class CHARS;
 	};
