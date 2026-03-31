@@ -11,15 +11,15 @@ public:
 	using iterator = std::list<char>::iterator;
 	using const_iterator = std::list<char>::const_iterator;
 
-	iterator insert(iterator pos, char ch)
+	void insert(iterator& pos, char ch)
 	{
 		chars.insert(pos, ch);
-		return pos;
 	}
 
-	iterator erase(iterator pos)
+	void erase(const iterator& pos, iterator& next)
 	{
-		return chars.erase(pos);
+		(void)next;
+		chars.erase(pos);
 	}
 
 	iterator begin() { return chars.begin(); }

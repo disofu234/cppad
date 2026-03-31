@@ -25,7 +25,7 @@ public:
 		using pointer = const char*;
 		using reference = const char&;
 
-		iterator(std::list<BUFFER_NODE>::iterator node_it, size_t char_offset,
+		iterator(std::list<BUFFER_NODE>::iterator node_it, size_t buffer_index,
 			std::list<BUFFER_NODE>* nodes_ptr, const std::vector<char>* buffer);
 
 		reference operator*() const;
@@ -39,7 +39,7 @@ public:
 
 	private:
 		std::list<BUFFER_NODE>::iterator node_it;
-		size_t char_offset;
+		size_t buffer_index;
 		std::list<BUFFER_NODE>* nodes_ptr;
 		const std::vector<char>* buffer;
 
@@ -51,8 +51,8 @@ public:
 	CHARS();
 	CHARS(std::shared_ptr<std::vector<char>> buf);
 
-	iterator insert(iterator pos, char ch);
-	iterator erase(iterator pos);
+	void insert(iterator& pos, char ch);
+	void erase(const iterator& pos, iterator& next);
 
 	iterator begin();
 	iterator end();
