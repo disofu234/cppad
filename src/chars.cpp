@@ -3,28 +3,31 @@
 // --- iterator ---
 
 CHARS::iterator::iterator(std::list<BUFFER_NODE>::iterator node_it,
-	size_t char_offset, std::list<BUFFER_NODE>* nodes_ptr,
+	size_t buffer_index, std::list<BUFFER_NODE>* nodes_ptr,
 	const std::vector<char>* buffer)
-	: node_it(node_it), char_offset(char_offset), nodes_ptr(nodes_ptr),
+	: node_it(node_it), buffer_index(buffer_index), nodes_ptr(nodes_ptr),
 	  buffer(buffer) {}
 
 CHARS::iterator::reference CHARS::iterator::operator*() const
 {
-	return (*buffer)[node_it->offset + char_offset];
+	return (*buffer)[buffer_index];
 }
 
 CHARS::iterator::pointer CHARS::iterator::operator->() const
 {
-	return &(*buffer)[node_it->offset + char_offset];
+	return &(*buffer)[buffer_index];
 }
 
 CHARS::iterator& CHARS::iterator::operator++()
 {
-	char_offset++;
-	if (char_offset == node_it->len)
+	buffer_index++;
+	if (buffer_index == node_it->offset + node_it->len)
 	{
 		node_it++;
-		char_offset = 0;
+		if (node_it != nodes_ptr->end())
+			buffer_index = node_it->offset;
+		else
+			buffer_index = 0;
 	}
 	return *this;
 }
@@ -34,24 +37,24 @@ CHARS::iterator& CHARS::iterator::operator--()
 	if (node_it == nodes_ptr->end())
 	{
 		node_it--;
-		char_offset = node_it->len - 1;
+		buffer_index = node_it->offset + node_it->len - 1;
 		return *this;
 	}
 
-	if (char_offset == 0)
+	if (buffer_index == node_it->offset)
 	{
 		node_it--;
-		char_offset = node_it->len - 1;
+		buffer_index = node_it->offset + node_it->len - 1;
 		return *this;
 	}
 
-	char_offset--;
+	buffer_index--;
 	return *this;
 }
 
 bool CHARS::iterator::operator==(const iterator& other) const
 {
-	return node_it == other.node_it && char_offset == other.char_offset;
+	return node_it == other.node_it && buffer_index == other.buffer_index;
 }
 
 bool CHARS::iterator::operator!=(const iterator& other) const
@@ -67,7 +70,7 @@ CHARS::CHARS()
 CHARS::CHARS(std::shared_ptr<std::vector<char>> buf)
 	: buffer(std::move(buf)), char_count(0) {}
 
-CHARS::iterator CHARS::insert(iterator pos, char ch)
+void CHARS::insert(iterator& pos, char ch)
 {
 	buffer->push_back(ch);
 	char_count++;
@@ -78,73 +81,72 @@ CHARS::iterator CHARS::insert(iterator pos, char ch)
 		if (!nodes.empty() && nodes.back().offset + nodes.back().len == new_offset)
 		{
 			nodes.back().len++;
-			return pos;
+			return;
 		}
 		nodes.push_back(BUFFER_NODE{new_offset, 1});
-		return pos;
+		return;
 	}
 
-	if (pos.char_offset == 0)
+	if (pos.buffer_index == pos.node_it->offset)
 	{
 		nodes.insert(pos.node_it, BUFFER_NODE{new_offset, 1});
-		return pos;
+		return;
 	}
 
 	// Middle of node — split
-	size_t offset = pos.char_offset;
+	// Current node becomes first half, insert new char + second half after
+	size_t chars_before = pos.buffer_index - pos.node_it->offset;
+	size_t original_offset = pos.node_it->offset;
 	size_t original_len = pos.node_it->len;
 
-	pos.node_it->len = offset;
+	pos.node_it->len = chars_before;
 
-	auto second_half_it = nodes.insert(std::next(pos.node_it),
-		BUFFER_NODE{pos.node_it->offset + offset, original_len - offset});
-
-	nodes.insert(second_half_it, BUFFER_NODE{new_offset, 1});
+	auto new_char_it = nodes.insert(std::next(pos.node_it),
+		BUFFER_NODE{new_offset, 1});
+	auto second_half_it = nodes.insert(std::next(new_char_it),
+		BUFFER_NODE{original_offset + chars_before, original_len - chars_before});
 
 	pos.node_it = second_half_it;
-	pos.char_offset = 0;
-	return pos;
 }
 
-CHARS::iterator CHARS::erase(iterator pos)
+void CHARS::erase(iterator& next)
 {
 	char_count--;
-	size_t offset = pos.char_offset;
+	auto prev = next;
+	--prev;
 
-	if (pos.node_it->len == 1)
+	size_t offset_in_node = prev.buffer_index - prev.node_it->offset;
+
+	if (prev.node_it->len == 1)
 	{
-		auto next_node = nodes.erase(pos.node_it);
-		if (next_node != nodes.end())
-		{
-			return iterator(next_node, 0, &nodes, buffer.get());
-		}
-		return end();
+		nodes.erase(prev.node_it);
+		return;
 	}
 
-	if (offset == pos.node_it->len - 1)
+	if (offset_in_node == prev.node_it->len - 1)
 	{
-		pos.node_it->len--;
-		auto next_node = std::next(pos.node_it);
-		if (next_node != nodes.end())
-		{
-			return iterator(next_node, 0, &nodes, buffer.get());
-		}
-		return end();
+		prev.node_it->len--;
+		return;
 	}
 
-	if (offset == 0)
+	if (offset_in_node == 0)
 	{
-		pos.node_it->offset++;
-		pos.node_it->len--;
-		return iterator(pos.node_it, 0, &nodes, buffer.get());
+		prev.node_it->offset++;
+		prev.node_it->len--;
+		return;
 	}
 
 	// Middle — split
-	auto second_half_it = nodes.insert(std::next(pos.node_it),
-		BUFFER_NODE{pos.node_it->offset + offset + 1, pos.node_it->len - offset - 1});
-	pos.node_it->len = offset;
+	// Current node becomes first half, insert second half after
+	size_t original_len = prev.node_it->len;
 
-	return iterator(second_half_it, 0, &nodes, buffer.get());
+	prev.node_it->len = offset_in_node;
+
+	auto second_half_it = nodes.insert(std::next(prev.node_it),
+		BUFFER_NODE{prev.buffer_index + 1, original_len - offset_in_node - 1});
+
+	if (next.node_it == prev.node_it)
+		next.node_it = second_half_it;
 }
 
 CHARS::iterator CHARS::begin()
@@ -153,7 +155,7 @@ CHARS::iterator CHARS::begin()
 	{
 		return end();
 	}
-	return iterator(nodes.begin(), 0, &nodes, buffer.get());
+	return iterator(nodes.begin(), nodes.begin()->offset, &nodes, buffer.get());
 }
 
 CHARS::iterator CHARS::end()
@@ -168,7 +170,7 @@ CHARS::const_iterator CHARS::begin() const
 	{
 		return const_iterator(mutable_nodes.end(), 0, &mutable_nodes, buffer.get());
 	}
-	return const_iterator(mutable_nodes.begin(), 0, &mutable_nodes, buffer.get());
+	return const_iterator(mutable_nodes.begin(), mutable_nodes.begin()->offset, &mutable_nodes, buffer.get());
 }
 
 CHARS::const_iterator CHARS::end() const
